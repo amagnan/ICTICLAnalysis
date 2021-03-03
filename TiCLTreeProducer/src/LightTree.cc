@@ -36,7 +36,7 @@ LightTree::~LightTree(){
 
 void LightTree::makeTree(edm::Service<TFileService> & aFile,
 			 const std::string & aIterName,
-			 const bool aFillTripletsInfo){
+			 const int aFillTripletsInfo){
 
 
   outputTree = aFile->make<TTree>("TSTree", ("tree"+aIterName).c_str());
@@ -93,7 +93,7 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("lc_tsMult", &lc_tsMult);
   outputTree->Branch("lc_mult", &lc_mult);
   
-  if (aFillTripletsInfo){
+  if (aFillTripletsInfo>0){
     for (unsigned iL(0); iL<nL; ++iL){//loop on layers   
       std::ostringstream lName;
       lName << "nTriplets_" << iL+1;

@@ -25,7 +25,7 @@ class LightTree {
   
   void makeTree(edm::Service<TFileService> & aFile,
 		const std::string & aIterName,
-		const bool aFillTripletsInfo);
+		const int aFillTripletsInfo);
   
   
   void initialiseTreeVariables(const size_t irun,

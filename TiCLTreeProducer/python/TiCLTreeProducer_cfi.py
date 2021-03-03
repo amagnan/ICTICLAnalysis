@@ -20,6 +20,6 @@ ticlTree = cms.EDAnalyzer('TiCLTreeProducer',
                              "Dummy1","Dummy2","Dummy3",
                              "EM1","EM2","EM3",
                              "EM3relax","EMDef"),
-                         FillTripletsInfo = cms.bool(False),
+                          FillTripletsInfo = cms.int32(0),
 
                  )

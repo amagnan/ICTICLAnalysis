@@ -54,7 +54,7 @@ process.source = cms.Source(
 )
 
 process.load("ICTICLAnalysis.TiCLTreeProducer.TiCLTreeProducer_cfi")
-process.ticlTree.FillTripletsInfo = cms.untracked.int32(options.fillTriplets)
+process.ticlTree.FillTripletsInfo = cms.int32(options.fillTriplets)
 
 #process.pid.trksterVec = cms.VInputTag(options.inputTracksters)
 

@@ -137,7 +137,7 @@ private:
   std::vector<LightTree> lighttreeVec;
   std::vector<std::string> iterTypeVec;
 
-  bool fillTripletsInfo;
+  int fillTripletsInfo;
 
   TTree *treeAllLC;
 
@@ -173,7 +173,7 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   usesResource("TFileService");
   edm::Service<TFileService> file;
 
-  fillTripletsInfo = iConfig.getParameter<bool>("FillTripletsInfo");
+  fillTripletsInfo = iConfig.getParameter<int>("FillTripletsInfo");
 
   std::cout << " -- Running on Tracksters: " << std::endl;
   std::vector<edm::InputTag> inputVec = iConfig.getParameter<std::vector<edm::InputTag> >("trksterVec");
