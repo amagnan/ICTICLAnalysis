@@ -1,0 +1,12 @@
+<use name="DataFormats/Math"/>
+<use name="root"/>
+<use name="DataFormats/HGCalReco"/>
+<use name="FWCore/ServiceRegistry"/>
+<use name="CommonTools/UtilAlgos"/>
+<export>
+  <use name="root"/>
+  <use name="DataFormats/HGCalReco"/>
+  <use name="FWCore/ServiceRegistry"/>
+  <use name="CommonTools/UtilAlgos"/>
+  <lib name="1"/>
+</export>
