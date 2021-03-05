@@ -80,6 +80,13 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("cp_phi", &cp_phi, "cp_phi/D");
   outputTree->Branch("cp_pdgid", &cp_pdgid, "cp_pdgid/I");
   
+  outputTree->Branch("nSC", &nSC, "nSC/I");
+  outputTree->Branch("sc_energy", &sc_energy, "sc_energy/D");
+  outputTree->Branch("sc_pt", &sc_pt, "sc_pt/D");
+  outputTree->Branch("sc_eta", &sc_eta, "sc_eta/D");
+  outputTree->Branch("sc_phi", &sc_phi, "sc_phi/D");
+  outputTree->Branch("sc_pdgid", &sc_pdgid, "sc_pdgid/I");
+  
   outputTree->Branch("nLC", &nLC, "nLC/I");
   outputTree->Branch("lc_energy", &lc_energy);
   outputTree->Branch("lc_eta", &lc_eta);
@@ -164,60 +171,67 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   ts_BCx = 0;
   ts_BCy = 0;
   ts_BCz = 0;
-    ts_eta_PCA = 0;
-    ts_phi_PCA = 0;
-    ts_eta_fromLC = 0;
-    ts_phi_fromLC = 0;
-    ts_photon_proba = 0;
-    ts_ele_proba = 0;
-    ts_mu_proba = 0;
-    ts_pi0_proba = 0;
-    ts_chHad_proba = 0;
-    ts_neHad_proba = 0;
-    ts_ambg_proba = 0;
-    ts_unkwn_proba = 0;
-    ts_firstLayer = 0;
-    ts_lastLayer = 0;
-    ts_outInHopsPerformed = 0;
-    
-    nCP = 0;
-    cp_missingEnergyFraction = 0;
-    cp_energy = 0;
-    cp_pdgid = 0;
-    cp_pt = 0;
-    cp_eta = 0;
-    cp_phi = 0;
-    
-    nLC = 0;
-    lc_energy.clear();
-    lc_eta.clear();
-    lc_phi.clear();
-    lc_x.clear();
-    lc_y.clear();
-    lc_z.clear();
-    lc_algo.clear();
-    lc_layer.clear();
-    lc_nrechits.clear();
-    lc_tsMult.clear();
-    lc_mult.clear();
+  ts_eta_PCA = 0;
+  ts_phi_PCA = 0;
+  ts_eta_fromLC = 0;
+  ts_phi_fromLC = 0;
+  ts_photon_proba = 0;
+  ts_ele_proba = 0;
+  ts_mu_proba = 0;
+  ts_pi0_proba = 0;
+  ts_chHad_proba = 0;
+  ts_neHad_proba = 0;
+  ts_ambg_proba = 0;
+  ts_unkwn_proba = 0;
+  ts_firstLayer = 0;
+  ts_lastLayer = 0;
+  ts_outInHopsPerformed = 0;
+  
+  nCP = 0;
+  cp_missingEnergyFraction = 0;
+  cp_energy = 0;
+  cp_pdgid = 0;
+  cp_pt = 0;
+  cp_eta = 0;
+  cp_phi = 0;
 
-    for (unsigned iL(0); iL<nL; ++iL){//loop on layers   
-      nTriplets[iL] = 0;
-      triplets_layerA[iL].clear();
-      triplets_layerC[iL].clear();
-      triplets_energyA[iL].clear();
-      triplets_energyB[iL].clear();
-      triplets_energyC[iL].clear();
-      triplets_etaB[iL].clear();
-      triplets_cosBeta[iL].clear();
-      triplets_cosAlphaInner[iL].clear();
-      triplets_cosAlphaOuter[iL].clear();
-      triplets_inner_in_links[iL].clear();
-      triplets_inner_out_links[iL].clear();
-      triplets_outer_in_links[iL].clear();
-      triplets_outer_out_links[iL].clear();
-    }
+  nSC = 0;
+  sc_energy = 0;
+  sc_pdgid = 0;
+  sc_pt = 0;
+  sc_eta = 0;
+  sc_phi = 0;
     
+  nLC = 0;
+  lc_energy.clear();
+  lc_eta.clear();
+  lc_phi.clear();
+  lc_x.clear();
+  lc_y.clear();
+  lc_z.clear();
+  lc_algo.clear();
+  lc_layer.clear();
+  lc_nrechits.clear();
+  lc_tsMult.clear();
+  lc_mult.clear();
+
+  for (unsigned iL(0); iL<nL; ++iL){//loop on layers   
+    nTriplets[iL] = 0;
+    triplets_layerA[iL].clear();
+    triplets_layerC[iL].clear();
+    triplets_energyA[iL].clear();
+    triplets_energyB[iL].clear();
+    triplets_energyC[iL].clear();
+    triplets_etaB[iL].clear();
+    triplets_cosBeta[iL].clear();
+    triplets_cosAlphaInner[iL].clear();
+    triplets_cosAlphaOuter[iL].clear();
+    triplets_inner_in_links[iL].clear();
+    triplets_inner_out_links[iL].clear();
+    triplets_outer_in_links[iL].clear();
+    triplets_outer_out_links[iL].clear();
+  }
+  
 }
 
 void LightTree::fillTriplets(const std::vector< std::vector<Triplet> > & aTripletVec){
@@ -283,6 +297,19 @@ void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles,
     cp_pdgid = caloparticles[icp].pdgid_;
   }
 }
+
+void LightTree::fillSCinfo(const std::vector<simcluster> & simclusters,
+		  const int isc){
+  nSC = simclusters.size();
+  if (isc>=0){
+    sc_energy = simclusters[isc].energy_;
+    sc_pt = simclusters[isc].pt_;
+    sc_eta = simclusters[isc].eta_;
+    sc_phi = simclusters[isc].phi_;
+    sc_pdgid = simclusters[isc].pdgid_;
+  }
+}
+
 
 
 

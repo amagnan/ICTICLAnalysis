@@ -118,6 +118,7 @@ private:
   
   // ----------member data ---------------------------
   edm::EDGetTokenT<std::vector<CaloParticle>> caloParticlesToken_;
+  edm::EDGetTokenT<std::vector<SimCluster>> simClustersToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsEEToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsFHToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsBHToken_;
@@ -157,6 +158,7 @@ private:
 
 TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   caloParticlesToken_(consumes<std::vector<CaloParticle>>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
+  simClustersToken_(consumes<std::vector<SimCluster>>(iConfig.getParameter<edm::InputTag>("simClusters"))),
   hgcalRecHitsEEToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsEE"))),
   hgcalRecHitsFHToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsFH"))),
   hgcalRecHitsBHToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsBH"))),
@@ -488,6 +490,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
   // get CaloParticles
   std::vector<caloparticle> caloparticles;
+  std::vector<simcluster> simclust[cps.size()];
   int idx = -1;
   for (const auto& it_cp : cps) {
     const CaloParticle& cp = ((it_cp));
@@ -518,6 +521,14 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       const SimCluster& simc = (*(it_simc));
       const auto& sc_haf = simc.hits_and_fractions();
 
+      simcluster tmpsc_;
+      tmpsc_.idx_ = idx;
+      tmpsc_.pdgid_ = simc.pdgId();
+      tmpsc_.energy_ = simc.energy();
+      tmpsc_.pt_ = simc.pt();
+      tmpsc_.eta_ = simc.eta();
+      tmpsc_.phi_ = simc.phi();
+      simclust[idx].push_back(tmpsc_);
       // get the rechits
       for (const auto& it_sc_haf : sc_haf) {
         DetId detid_ = (it_sc_haf.first);
@@ -606,7 +617,10 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       //fill this here - duplicated across tracksters trees...
       lighttreeVec[iT].initialiseTreeVariables((size_t)irun,(int)ievent,(size_t)ilumiblock); 
       lighttreeVec[iT].fillCPinfo(caloparticles,icp);
-      
+      for (unsigned int isc = 0; isc < simclust[icp].size(); ++isc) {
+	lighttreeVec[iT].fillSCinfo(simclust[icp],isc);
+      }
+
       auto const& tracksters = *(trkstersVec[iT]);//dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
       //auto const& tracksters = dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
       

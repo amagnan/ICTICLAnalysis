@@ -27,6 +27,33 @@ struct caloparticle {
 
 };
 
+struct simcluster {
+  int idx_;
+  int pdgid_;
+  double energy_;
+  double simEnergy_;
+  double pt_;
+  double eta_;
+  double phi_;
+  int nsimhits_;
+  std::vector<DetId> rechitdetid_;
+  std::vector<double> rechitenergy_;
+
+  inline std::string print() {
+    std::ostringstream lStr;
+    lStr << "SC " << idx_
+	 << " pdg " << pdgid_
+	 << " E " << energy_ 
+	 << " simE " << simEnergy_ 
+	 << " pt " << pt_ << " eta " << eta_ << " phi " << phi_ 
+	 << " nsimhits " << nsimhits_
+	 << " nhits " << rechitenergy_.size() 
+	 << std::endl;
+    return lStr.str();
+  };
+
+};
+
 struct layercluster {
   double energy_;
   double eta_;
@@ -59,6 +86,9 @@ struct trackster {
   double cpenergy_;
   double cpeta_;
   int cppdgid_;
+  double scenergy_;
+  double sceta_;
+  int scpdgid_;
   int outInHopsPerformed_;
 
 };
