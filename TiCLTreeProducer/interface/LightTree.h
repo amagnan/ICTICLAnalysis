@@ -42,10 +42,6 @@ class LightTree {
   void fillSCinfo(const std::vector<simcluster> & simclusters,
 		  const int isc);
 
-  void fillSTSinfo(const std::vector<ticl::Trackster> & simtracksters,
-		   const int its,
-		   const std::vector<layercluster> & lcsFromClosestTrksterToSC);
-  
   void fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 		  const int itrksterMin,
 		  const std::vector<layercluster> & lcsFromClosestTrksterToCP);
