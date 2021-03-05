@@ -39,7 +39,7 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
 			 const int aFillTripletsInfo){
 
 
-  outputTree = aFile->make<TTree>("TSTree", ("tree"+aIterName).c_str());
+  outputTree = aFile->make<TTree>(("TSTree_"+aIterName).c_str(), ("tree"+aIterName).c_str());
     
   outputTree->Branch("run", &run, "run/I");
   outputTree->Branch("event", &event, "event/I");
