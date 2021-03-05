@@ -11,7 +11,7 @@ EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/EMonlyNew
 #GEOMDIR=D49_Dummy_new/
 GEOMDIR=D49_All/
 
-for PT in 5 #10 15 20 30 40 50 75 100 150 200;
+for PT in 10 #5 10 15 20 30 40 50 75 100 150 200;
 #for PT in 40 50 75 100 150 200;
 do
     for eta in 17 #19 21 23 25 27;
