@@ -617,9 +617,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       //fill this here - duplicated across tracksters trees...
       lighttreeVec[iT].initialiseTreeVariables((size_t)irun,(int)ievent,(size_t)ilumiblock); 
       lighttreeVec[iT].fillCPinfo(caloparticles,icp);
-      for (unsigned int isc = 0; isc < simclust[icp].size(); ++isc) {
-	lighttreeVec[iT].fillSCinfo(simclust[icp],isc);
-      }
+      lighttreeVec[iT].fillSCinfo(simclust[icp]);
 
       auto const& tracksters = *(trkstersVec[iT]);//dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
       //auto const& tracksters = dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop

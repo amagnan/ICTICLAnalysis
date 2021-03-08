@@ -55,6 +55,21 @@ process.source = cms.Source(
 
 process.load("ICTICLAnalysis.TiCLTreeProducer.TiCLTreeProducer_cfi")
 process.ticlTree.FillTripletsInfo = cms.int32(options.fillTriplets)
+process.ticlTree.trksterVec          = cms.VInputTag(
+    #cms.InputTag("ticlSimTracksters"  ,  "", "RECO"),
+    cms.InputTag("ticlTrackstersDummy1"       , ""                 , "TICL" ),
+    cms.InputTag("ticlTrackstersDummy2"       , ""                 , "TICL" ),
+    cms.InputTag("ticlTrackstersDummy3"       , ""                 , "TICL" ),
+    cms.InputTag("ticlTrackstersEM1"       , ""                 , "TICL" ),
+    cms.InputTag("ticlTrackstersEM2"       , ""                 , "TICL" ),
+    cms.InputTag("ticlTrackstersEM3"       , ""                 , "TICL" ),
+    cms.InputTag("ticlTrackstersEM3relax"       , ""                 , "TICL" ),
+    cms.InputTag("ticlTrackstersEMDef"       , ""                 , "TICL" ))
+process.ticlTree.iterTypeVec = cms.vstring(
+    "Dummy1","Dummy2","Dummy3",
+    "EM1","EM2","EM3",
+    "EM3relax","EMDef"
+)
 
 #process.pid.trksterVec = cms.VInputTag(options.inputTracksters)
 

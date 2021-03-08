@@ -39,8 +39,7 @@ class LightTree {
   void fillCPinfo(const std::vector<caloparticle> & caloparticles,
 		  const int icp);
 
-  void fillSCinfo(const std::vector<simcluster> & simclusters,
-		  const int isc);
+  void fillSCinfo(const std::vector<simcluster> & simclusters);
 
   void fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 		  const int itrksterMin,
@@ -99,11 +98,11 @@ class LightTree {
   double cp_phi;
 
   int nSC;
-  double sc_energy;
-  int sc_pdgid;
-  double sc_pt;
-  double sc_eta;
-  double sc_phi;
+  std::vector<double> sc_energy;
+  std::vector<int> sc_pdgid;
+  std::vector<double> sc_pt;
+  std::vector<double> sc_eta;
+  std::vector<double> sc_phi;
 
   
   int nLC;

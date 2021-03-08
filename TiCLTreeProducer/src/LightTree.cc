@@ -81,11 +81,11 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("cp_pdgid", &cp_pdgid, "cp_pdgid/I");
   
   outputTree->Branch("nSC", &nSC, "nSC/I");
-  outputTree->Branch("sc_energy", &sc_energy, "sc_energy/D");
-  outputTree->Branch("sc_pt", &sc_pt, "sc_pt/D");
-  outputTree->Branch("sc_eta", &sc_eta, "sc_eta/D");
-  outputTree->Branch("sc_phi", &sc_phi, "sc_phi/D");
-  outputTree->Branch("sc_pdgid", &sc_pdgid, "sc_pdgid/I");
+  outputTree->Branch("sc_energy", &sc_energy);
+  outputTree->Branch("sc_pt", &sc_pt);
+  outputTree->Branch("sc_eta", &sc_eta);
+  outputTree->Branch("sc_phi", &sc_phi);
+  outputTree->Branch("sc_pdgid", &sc_pdgid);
   
   outputTree->Branch("nLC", &nLC, "nLC/I");
   outputTree->Branch("lc_energy", &lc_energy);
@@ -196,11 +196,11 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   cp_phi = 0;
 
   nSC = 0;
-  sc_energy = 0;
-  sc_pdgid = 0;
-  sc_pt = 0;
-  sc_eta = 0;
-  sc_phi = 0;
+  sc_energy.clear();
+  sc_pdgid.clear();
+  sc_pt.clear();
+  sc_eta.clear();
+  sc_phi.clear();
     
   nLC = 0;
   lc_energy.clear();
@@ -298,20 +298,16 @@ void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles,
   }
 }
 
-void LightTree::fillSCinfo(const std::vector<simcluster> & simclusters,
-		  const int isc){
+void LightTree::fillSCinfo(const std::vector<simcluster> & simclusters){
   nSC = simclusters.size();
-  if (isc>=0){
-    sc_energy = simclusters[isc].energy_;
-    sc_pt = simclusters[isc].pt_;
-    sc_eta = simclusters[isc].eta_;
-    sc_phi = simclusters[isc].phi_;
-    sc_pdgid = simclusters[isc].pdgid_;
+  for (int isc = 0; isc < nSC; ++isc) {
+    sc_energy.push_back(simclusters[isc].energy_);
+    sc_pt.push_back(simclusters[isc].pt_);
+    sc_eta.push_back(simclusters[isc].eta_);
+    sc_phi.push_back(simclusters[isc].phi_);
+    sc_pdgid.push_back(simclusters[isc].pdgid_);
   }
 }
-
-
-
 
 void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 			   const int itrksterMin,

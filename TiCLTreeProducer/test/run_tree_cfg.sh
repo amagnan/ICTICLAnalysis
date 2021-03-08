@@ -76,4 +76,4 @@ done
 
 
 
-echo "for PT in 3 5 10 15 20 30 40 50 75 100 150 200; do for eta in 17 19 21 23 25 27; do PTETA=_pt${PT}_eta${eta}; rm $GEOMDIR/CloseByPhotons/step3ticl${PTETA}_FlatTracksters.root; hadd $GEOMDIR/CloseByPhotons/step3ticl${PTETA}_FlatTracksters.root $GEOMDIR/CloseByPhotons/step3ticl${PTETA}_run*_FlatTracksters.root; done; done"
+echo "for PT in 3 5 10 15 20 30 40 50 75 100 150 200; do for eta in 17 19 21 23 25 27; do PTETA=_pt\${PT}_eta\${eta}; rm $GEOMDIR/CloseByPhotons/step3ticl\${PTETA}_FlatTracksters.root; hadd $GEOMDIR/CloseByPhotons/step3ticl\${PTETA}_FlatTracksters.root $GEOMDIR/CloseByPhotons/step3ticl\${PTETA}_run*_FlatTracksters.root; done; done"
