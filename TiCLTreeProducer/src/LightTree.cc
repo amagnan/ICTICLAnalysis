@@ -7,6 +7,9 @@ LightTree::~LightTree(){
   lc_energy.clear();
   lc_eta.clear();
   lc_phi.clear();
+  lc_seedEnergy.clear();
+  lc_seedEta.clear();
+  lc_seedPhi.clear();
   lc_x.clear();
   lc_y.clear();
   lc_z.clear();
@@ -91,6 +94,9 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("lc_energy", &lc_energy);
   outputTree->Branch("lc_eta", &lc_eta);
   outputTree->Branch("lc_phi", &lc_phi);
+  outputTree->Branch("lc_seedEnergy", &lc_seedEnergy);
+  outputTree->Branch("lc_seedEta", &lc_seedEta);
+  outputTree->Branch("lc_seedPhi", &lc_seedPhi);
   outputTree->Branch("lc_x", &lc_x);
   outputTree->Branch("lc_y", &lc_y);
   outputTree->Branch("lc_z", &lc_z);
@@ -206,6 +212,9 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   lc_energy.clear();
   lc_eta.clear();
   lc_phi.clear();
+  lc_seedEnergy.clear();
+  lc_seedEta.clear();
+  lc_seedPhi.clear();
   lc_x.clear();
   lc_y.clear();
   lc_z.clear();
@@ -347,10 +356,29 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 	int firstLay=30;
 	int lastLay=0;
 	nLC = lcsFromClosestTrksterToCP.size();
+
+	lc_energy.reserve(nLC);
+	lc_eta.reserve(nLC);
+	lc_phi.reserve(nLC);
+	lc_seedEnergy.reserve(nLC);
+	lc_seedEta.reserve(nLC);
+	lc_seedPhi.reserve(nLC);
+	lc_x.reserve(nLC);
+	lc_y.reserve(nLC);
+	lc_z.reserve(nLC);
+	lc_algo.reserve(nLC);
+	lc_layer.reserve(nLC);
+	lc_nrechits.reserve(nLC);
+	lc_tsMult.reserve(nLC);
+	lc_mult.reserve(nL);
+
 	for (auto const& lc : lcsFromClosestTrksterToCP) {
 	  lc_energy.push_back(lc.energy_);
 	  lc_eta.push_back(lc.eta_);
 	  lc_phi.push_back(lc.phi_);
+	  lc_seedEnergy.push_back(lc.seedEnergy_);
+	  lc_seedEta.push_back(lc.seedEta_);
+	  lc_seedPhi.push_back(lc.seedPhi_);
 	  lc_x.push_back(lc.x_);
 	  lc_y.push_back(lc.y_);
 	  lc_z.push_back(lc.z_);
@@ -365,7 +393,7 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 	  lc_tsMult.push_back(lc.tsMult_);
 	}
 	
-	for (unsigned iL(0); iL<28;++iL){
+	for (unsigned iL(0); iL<nL;++iL){
 	  std::map<int,int>::iterator lEle = lMapLC.find(iL+1);
 	  if (lEle !=lMapLC.end()) lc_mult.push_back(lEle->second);
 	  else lc_mult.push_back(0);

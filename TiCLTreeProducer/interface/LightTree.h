@@ -109,6 +109,9 @@ class LightTree {
   std::vector<double> lc_energy;
   std::vector<double> lc_eta;
   std::vector<double> lc_phi;
+  std::vector<double> lc_seedEnergy;
+  std::vector<double> lc_seedEta;
+  std::vector<double> lc_seedPhi;
   std::vector<double> lc_x;
   std::vector<double> lc_y;
   std::vector<double> lc_z;

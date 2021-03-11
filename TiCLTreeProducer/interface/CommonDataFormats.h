@@ -58,6 +58,9 @@ struct layercluster {
   double energy_;
   double eta_;
   double phi_;
+  double seedEnergy_;
+  double seedEta_;
+  double seedPhi_;
   int algo_;
   double x_;
   double y_;
