@@ -11,10 +11,10 @@ EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/EMonlyNew
 #GEOMDIR=D49_Dummy_new/
 GEOMDIR=D49_All/
 
-for PT in 30 # 5 10 15 20 30 40 50 75 100 150 200;
+for PT in 3 5 10 15 20 30 40 50 75 100 150 200;
 #for PT in 40 50 75 100 150 200;
 do
-    for eta in 17 #19 21 23 25 27;
+    for eta in 21 #17 19 21 23 25 27;
     do
 
 	if (( ${eta} == "17" )); then
@@ -32,7 +32,7 @@ do
 	PTETA=_pt${PT}_eta${eta}
 
 	#for d in CloseByPhotons #CloseByPhotonsFromVtx CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
-	for d in CloseByPhotons #CloseByPhotonsFromVtxWithPU
+	for d in CloseByPhotonsFromVtx #CloseByPhotonsFromVtxWithPU
 	do
 	    echo "Processing "$GEOMDIR" "$d
 	    # Establish output directory based on sample name.

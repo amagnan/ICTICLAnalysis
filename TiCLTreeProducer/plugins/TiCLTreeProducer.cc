@@ -247,6 +247,7 @@ std::vector<int> TiCLTreeProducer::getClosestTrackstersToCPByIndex(const calopar
   for (auto const& t : trksters) {
     std::vector<layercluster> lcsFromTrkster;
     getLCsFromTrkster(t, lcs, lcsFromTrkster,hitMap);
+    if (lcsFromTrkster.size()==0) return closestTrksters_;
     std::sort(lcsFromTrkster.begin(), lcsFromTrkster.end(), sortLCsByEnergyAndLayer);
       
     float dr = reco::deltaR(cp.eta_, cp.phi_, lcsFromTrkster[0].eta_, lcsFromTrkster[0].phi_);
