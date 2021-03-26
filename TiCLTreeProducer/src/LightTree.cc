@@ -462,16 +462,16 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 
       lc_nSC.push_back(scs.size());
 
-      std::cout << " LC Id in Trackster = " << lcNum 		  
+      /*std::cout << " LC Id in Trackster = " << lcNum 		  
 		<< " , LC Id in global LC collection = " << lc.idxTracksterLC_
 		<< " , LC layer = " << lc.layer_
 		<< " , E(LC) = " << lc.energy_
-		<< " nSimClus " << scs.size() << " (idx,E) = ";
+		<< " nSimClus " << scs.size() << " (idx,E) = ";*/
       unsigned scIter = 0;
       unsigned numAbove = 0;
       for (const auto& scPair : scs) {
-	std::cout << "(" << scPair.first.index()
- 		  << "," << scPair.second << ") "; 
+	//std::cout << "(" << scPair.first.index()
+ 	//	  << "," << scPair.second << ") "; 
 	//save only up to 5...
 	if (scPair.second>0.05){
 	  numAbove++;
@@ -482,8 +482,8 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 	  }
 	}
       } // end of looping over the SimClusters contributing to this LC
-      std::cout << std::endl;
-      if (numAbove >5) std::cout << " - Num above 5%: " << numAbove << std::endl;
+      //std::cout << std::endl;
+      //if (numAbove >5) std::cout << " - Num above 5%: " << numAbove << std::endl;
       lcNum++;
       
     }//loop over LCs

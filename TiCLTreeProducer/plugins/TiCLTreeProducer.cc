@@ -744,7 +744,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     
     lighttreeVec[iT].fillTSinfo(tracksters,nLayers,lcsFromTrksters,layerClusterHandle,recSimColl);
       
-    if (itrksterMin_>=0 && fillTripletsInfo) fillDoubletsInfo(tracksters[itrksterMin_],lcs,lighttreeVec[iT]);
+    //if (itrksterMin_>=0 && fillTripletsInfo) fillDoubletsInfo(tracksters[itrksterMin_],lcs,lighttreeVec[iT]);
     
     lighttreeVec[iT].fillOutputTree();
   }//loop on iterations
