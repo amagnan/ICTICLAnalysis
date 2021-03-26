@@ -6,6 +6,7 @@ ticlTree = cms.EDAnalyzer('TiCLTreeProducer',
                      hgcalRecHitsEE     = cms.InputTag("HGCalRecHit"        , "HGCEERecHits"),
                      hgcalRecHitsFH     = cms.InputTag("HGCalRecHit"        , "HGCHEFRecHits"),
                      hgcalRecHitsBH     = cms.InputTag("HGCalRecHit"        , "HGCHEBRecHits"),
+                     layerClusterSimClusterAssociator = cms.untracked.InputTag("layerClusterSimClusterAssociation"),
                      hgcalLayerClusters = cms.InputTag("hgcalLayerClusters" , ""                 , "RECO"),
                      layerClusterTime   = cms.InputTag("hgcalLayerClusters" , "timeLayerCluster" , "RECO"),
                      trksterVec          = cms.VInputTag( 
@@ -30,5 +31,6 @@ ticlTree = cms.EDAnalyzer('TiCLTreeProducer',
                          #"Dummy1","Dummy2","Dummy3",
                          #"EM1","EM2","EM3",
                          #"EM3relax","EMDef",
-                     FillTripletsInfo = cms.int32(0)
+                     FillTripletsInfo = cms.int32(0),
+                     Debug = cms.int32(0)
                  )

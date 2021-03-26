@@ -6,12 +6,15 @@
 #PTETA=_
 
 
-EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/EMonlyNew
+EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL
+#210325
+#EMonlyNew
 #EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/EMonlyNewDef
 #GEOMDIR=D49_Dummy_new/
-GEOMDIR=D49_All/
+GEOMDIR=D49_AllTracksters/
 
-for PT in 3 5 10 15 20 30 40 50 75 100 150 200;
+#for PT in 3 5 10 15 20 30 40 50 75 100 150 200;
+for PT in 3 10 20 50 100 150 200;
 #for PT in 40 50 75 100 150 200;
 do
     for eta in 21 #17 19 21 23 25 27;
@@ -32,7 +35,7 @@ do
 	PTETA=_pt${PT}_eta${eta}
 
 	#for d in CloseByPhotons #CloseByPhotonsFromVtx CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
-	for d in CloseByPhotonsFromVtx #CloseByPhotonsFromVtxWithPU
+	for d in ChargedPionsFromVtx #CloseByPhotons #CloseByPhotonsFromVtxWithPU
 	do
 	    echo "Processing "$GEOMDIR" "$d
 	    # Establish output directory based on sample name.
