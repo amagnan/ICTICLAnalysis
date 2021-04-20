@@ -29,7 +29,8 @@ class LightTree {
   
   void makeTree(edm::Service<TFileService> & aFile,
 		const std::string & aIterName,
-		const int aFillTripletsInfo);
+		const int aFillTripletsInfo,
+		const unsigned aDebug);
   
   
   void initialiseTreeVariables(const size_t irun,
@@ -56,7 +57,7 @@ class LightTree {
     if (cp_missingEnergyFraction.size()<icp+1) return;
     cp_missingEnergyFraction[icp] = trksterCPEnDiff;
   };
-  
+
   inline void fillOutputTree(){
     outputTree->Fill();
   };
@@ -64,6 +65,7 @@ class LightTree {
  private:
 
   TTree* outputTree;
+  unsigned mDebug;
 
   unsigned nL;
   size_t run, lumi;

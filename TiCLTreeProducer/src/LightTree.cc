@@ -48,8 +48,10 @@ LightTree::~LightTree(){
 
 void LightTree::makeTree(edm::Service<TFileService> & aFile,
 			 const std::string & aIterName,
-			 const int aFillTripletsInfo){
+			 const int aFillTripletsInfo,
+			 const unsigned aDebug){
 
+  mDebug = aDebug;
 
   outputTree = aFile->make<TTree>(("TSTree_"+aIterName).c_str(), ("tree"+aIterName).c_str());
     
@@ -390,6 +392,7 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
   }
   
   for (int its = 0; its < nTS; ++its) {
+
     ts_emEnergy.push_back(tracksters[its].raw_em_energy());
     ts_energy.push_back(tracksters[its].raw_energy());
     ts_regEnergy.push_back(tracksters[its].regressed_energy());
@@ -413,7 +416,12 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
     
     std::map<int,int>lMapLC;
     lMapLC.clear();
-   
+
+    if (mDebug>1) {
+      std::cout << " -- trackster " << its ;
+      std::cout << ", num LC = " << lcsFromTrkster[its].size() << std::endl;
+    }
+    
     if (lcsFromTrkster[its].size()!=0) {
       ts_eta_fromLC.push_back(lcsFromTrkster[its][0].eta_);
       ts_phi_fromLC.push_back(lcsFromTrkster[its][0].phi_);
@@ -427,6 +435,7 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
     int lastLay=0;
     ts_nLC.push_back(lcsFromTrkster[its].size());
     
+
     unsigned lcNum = 0;
     for (auto const& lc : lcsFromTrkster[its]) {
       lc_TSidx.push_back(its);
@@ -462,16 +471,18 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 
       lc_nSC.push_back(scs.size());
 
-      /*std::cout << " LC Id in Trackster = " << lcNum 		  
-		<< " , LC Id in global LC collection = " << lc.idxTracksterLC_
-		<< " , LC layer = " << lc.layer_
-		<< " , E(LC) = " << lc.energy_
-		<< " nSimClus " << scs.size() << " (idx,E) = ";*/
+      if (mDebug>2) {
+	std::cout << " LC Id in Trackster = " << lcNum 		  
+		  << " , LC Id in global LC collection = " << lc.idxTracksterLC_
+		  << " , LC layer = " << lc.layer_
+		  << " , E(LC) = " << lc.energy_
+		  << " nSimClus " << scs.size() << " (idx,E) = ";
+	  }
       unsigned scIter = 0;
       unsigned numAbove = 0;
       for (const auto& scPair : scs) {
-	//std::cout << "(" << scPair.first.index()
- 	//	  << "," << scPair.second << ") "; 
+	if (mDebug>2) std::cout << "(" << scPair.first.index()
+			       << "," << scPair.second << ") "; 
 	//save only up to 5...
 	if (scPair.second>0.05){
 	  numAbove++;
@@ -482,8 +493,10 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
 	  }
 	}
       } // end of looping over the SimClusters contributing to this LC
-      //std::cout << std::endl;
-      //if (numAbove >5) std::cout << " - Num above 5%: " << numAbove << std::endl;
+      if (mDebug>2) {
+	if (mDebug>2) std::cout << std::endl;
+	if (numAbove >5) std::cout << " - Num above 5%: " << numAbove << std::endl;
+      }
       lcNum++;
       
     }//loop over LCs

@@ -211,7 +211,7 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   for (unsigned iT(0); iT<nIters; ++iT){
     trksterTokenVec_.push_back(consumes<std::vector<ticl::Trackster>>(inputVec[iT]));
     std::cout << inputVec[iT] << " " << iterTypeVec[iT] << std::endl;
-    lighttreeVec[iT].makeTree(file,iterTypeVec[iT],fillTripletsInfo);
+    lighttreeVec[iT].makeTree(file,iterTypeVec[iT],fillTripletsInfo,debug);
   }
   treeAllLC = file->make<TTree>("treeLC", "treeAllLC");
 
@@ -522,13 +522,13 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   iEvent.getByToken(caloParticlesToken_, CaloParticles);
   const CaloParticleCollection& cps = *CaloParticles;
 
-  edm::Handle<hgcal::SimToRecoCollectionWithSimClusters> simToRecoCollHandle;
-  iEvent.getByToken(associatorMapSimToRecoToken_, simToRecoCollHandle);
-  const hgcal::SimToRecoCollectionWithSimClusters& simToRecoColl = *simToRecoCollHandle;
+  //edm::Handle<hgcal::SimToRecoCollectionWithSimClusters> simToRecoCollHandle;
+  //iEvent.getByToken(associatorMapSimToRecoToken_, simToRecoCollHandle);
+  //const hgcal::SimToRecoCollectionWithSimClusters& simToRecoColl = *simToRecoCollHandle;
 
   edm::Handle<hgcal::RecoToSimCollectionWithSimClusters> recoToSimCollHandle;
   iEvent.getByToken(associatorMapRecoToSimToken_, recoToSimCollHandle);
-  const hgcal::RecoToSimCollectionWithSimClusters& recoToSimColl = *recoToSimCollHandle;
+  //const hgcal::RecoToSimCollectionWithSimClusters& recoToSimColl = *recoToSimCollHandle;
   auto recSimColl = *recoToSimCollHandle; 
 
   edm::Handle<reco::CaloClusterCollection> layerClusterHandle;
@@ -573,11 +573,13 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     tmpcp_.pt_ = cp.pt();
     tmpcp_.eta_ = cp.eta();
     tmpcp_.phi_ = cp.phi();
-    //std::cout << tmpcp_.print() << std::endl;
 
     // get the simclusters
     const SimClusterRefVector& simclusters = cp.simClusters();
     tmpcp_.nSC_ = simclusters.size();
+
+    if (debug) std::cout << tmpcp_.print() << std::endl;
+
     for (const auto& it_simc : simclusters) {
       const SimCluster& simc = (*(it_simc));
       const auto& sc_haf = simc.hits_and_fractions();
@@ -589,6 +591,9 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       tmpsc_.pt_ = simc.pt();
       tmpsc_.eta_ = simc.eta();
       tmpsc_.phi_ = simc.phi();
+
+      if (debug) std::cout << tmpsc_.print() << std::endl;
+
       simclust.push_back(tmpsc_);
       // get the rechits
       for (const auto& it_sc_haf : sc_haf) {
@@ -687,6 +692,8 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   
   treeAllLC->Fill();
 
+  if (debug) std::cout << " - nAllLC = " << nAllLC << std::endl;
+
   for (unsigned iT(0); iT<nIters; ++iT){
     if (debug) std::cout << " -- Processing iter " << iterTypeVec[iT] << std::endl;
 
@@ -698,6 +705,8 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     auto const& tracksters = *(trkstersVec[iT]);//dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
     //auto const& tracksters = dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
     
+    if (debug) std::cout << " --- Number of tracksters: " << tracksters.size() << std::endl;
+
     // find the tracksters within some DR from the CP
 
     float maxDrTracksterCP = 0.3;

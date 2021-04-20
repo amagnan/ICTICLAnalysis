@@ -16,9 +16,11 @@ struct caloparticle {
 
   inline std::string print() {
     std::ostringstream lStr;
-    lStr << "CP " << idx_
+    lStr << "-------- CaloParticle print --------" << std::endl 
+	 << "CP " << idx_
 	 << " pdg " << pdgid_
-	 << " E " << energy_ 
+	 << " num SC " << nSC_
+	 << " E " << energy_ << " pT " << pt_
 	 << " eta " << eta_ << " phi " << phi_ 
 	 << " nhits " << rechitsmap_.size() 
 	 << std::endl;
@@ -40,13 +42,14 @@ struct simcluster {
 
   inline std::string print() {
     std::ostringstream lStr;
-    lStr << "SC CPidx " << idx_
+    lStr << "-------- SimCluster print --------" << std::endl 
+	 << "SC CPidx " << idx_
 	 << " pdg " << pdgid_
 	 << " E " << energy_ 
 	 << " simE " << simEnergy_ 
 	 << " pt " << pt_ << " eta " << eta_ << " phi " << phi_ 
 	 << " nsimhits " << nsimhits_
-	 << " nhits " << rechitsmap_.size() 
+      //<< " nhits " << rechitsmap_.size() 
 	 << std::endl;
     return lStr.str();
   };
