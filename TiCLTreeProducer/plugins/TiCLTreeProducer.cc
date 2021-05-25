@@ -27,6 +27,14 @@
 
 #include "RecoLocalCalo/HGCalRecAlgos/interface/RecHitTools.h"
 
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticleFwd.h"
+
+#include "RecoEgamma/EgammaMCTools/interface/ElectronMCTruthFinder.h"
+#include "RecoEgamma/EgammaMCTools/interface/ElectronMCTruth.h"
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruthFinder.h"
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruth.h"
+
 #include "SimDataFormats/CaloAnalysis/interface/CaloParticle.h"
 #include "SimDataFormats/CaloAnalysis/interface/CaloParticleFwd.h"
 
@@ -37,6 +45,7 @@
 #include "SimDataFormats/Associations/interface/LayerClusterToSimClusterAssociatorBaseImpl.h"
 
 #include "SimDataFormats/Vertex/interface/SimVertex.h"
+#include "SimDataFormats/Track/interface/SimTrack.h"
 #include "RecoLocalCalo/HGCalRecProducers/interface/HGCalClusteringAlgoBase.h"
 
 #include "DataFormats/ParticleFlowReco/interface/HGCalMultiCluster.h"
@@ -129,6 +138,9 @@ private:
   
   // ----------member data ---------------------------
   edm::EDGetTokenT<std::vector<CaloParticle>> caloParticlesToken_;
+  edm::EDGetTokenT<std::vector<reco::GenParticle>> genParticlesToken_;
+  edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
+  edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
   edm::EDGetTokenT<std::vector<SimCluster>> simClustersToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsEEToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsFHToken_;
@@ -142,6 +154,8 @@ private:
 
   edm::EDGetTokenT<reco::CaloClusterCollection> hgcalLayerClustersToken_;
   edm::EDGetTokenT<edm::ValueMap<std::pair<float, float> > > hgcalLayerClusterTimeToken_;
+
+  PhotonMCTruthFinder photonMCTruthFinder_;
 
   unsigned debug;
 
@@ -179,6 +193,9 @@ private:
 
 TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   caloParticlesToken_(consumes<std::vector<CaloParticle>>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
+  genParticlesToken_(consumes<std::vector<reco::GenParticle>>(iConfig.getParameter<edm::InputTag>("genParticles"))),
+  simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracks"))),
+  simVerticesToken_(consumes<std::vector<SimVertex>>(iConfig.getParameter<edm::InputTag>("simVertices"))),
   simClustersToken_(consumes<std::vector<SimCluster>>(iConfig.getParameter<edm::InputTag>("simClusters"))),
   hgcalRecHitsEEToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsEE"))),
   hgcalRecHitsFHToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsFH"))),
@@ -192,7 +209,9 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   associatorMapSimToRecoToken_(consumes<hgcal::SimToRecoCollectionWithSimClusters>(associatorLayerClusterSimCluster_)),
   associatorMapRecoToSimToken_(consumes<hgcal::RecoToSimCollectionWithSimClusters>(associatorLayerClusterSimCluster_)),
   hgcalLayerClustersToken_(consumes<reco::CaloClusterCollection>(iConfig.getParameter<edm::InputTag>("hgcalLayerClusters"))),
-  hgcalLayerClusterTimeToken_(consumes<edm::ValueMap<std::pair<float, float>>>(iConfig.getParameter<edm::InputTag>("layerClusterTime"))) {
+  hgcalLayerClusterTimeToken_(consumes<edm::ValueMap<std::pair<float, float>>>(iConfig.getParameter<edm::InputTag>("layerClusterTime"))),
+  photonMCTruthFinder_()
+  {
 
   recHitTools.reset(new hgcal::RecHitTools());
   //now do what ever initialization is needed
@@ -522,6 +541,15 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   iEvent.getByToken(caloParticlesToken_, CaloParticles);
   const CaloParticleCollection& cps = *CaloParticles;
 
+  edm::Handle<std::vector<reco::GenParticle>> genParticles;
+  iEvent.getByToken(genParticlesToken_, genParticles);
+
+  edm::Handle<std::vector<SimTrack>> simTracks;
+  iEvent.getByToken(simTracksToken_, simTracks);
+
+  edm::Handle<std::vector<SimVertex>> simVertices;
+  iEvent.getByToken(simVerticesToken_, simVertices);
+
   //edm::Handle<hgcal::SimToRecoCollectionWithSimClusters> simToRecoCollHandle;
   //iEvent.getByToken(associatorMapSimToRecoToken_, simToRecoCollHandle);
   //const hgcal::SimToRecoCollectionWithSimClusters& simToRecoColl = *simToRecoCollHandle;
@@ -549,8 +577,13 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
   initialiseLCTreeVariables();
 
+  // get photon truth info for conversions
+  auto mcTruthPhotons = photonMCTruthFinder_.find(*simTracks, *simVertices);
+  PhotonMCTruth mcTruthPho;
+
   // get CaloParticles
   std::vector<caloparticle> caloparticles;
+  std::vector<float> convAbsDzs;
   std::vector<simcluster> simclust;
   int idx = -1;
   for (const auto& it_cp : cps) {
@@ -565,6 +598,16 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       continue;
     }
     idx++;
+
+    bool mcTruthExists = false;
+    float minDR = 10.;
+    for( auto mcpho : mcTruthPhotons) {
+      if( abs((mcpho.fourMomentum().et() - cp.pt()) / cp.pt()) < 0.5 && deltaR(mcpho.fourMomentum().eta(), mcpho.fourMomentum().phi(), cp.eta(), cp.phi()) < minDR ) {
+        minDR = deltaR(mcpho.fourMomentum().eta(), mcpho.fourMomentum().phi(), cp.eta(), cp.phi());
+        mcTruthPho = mcpho;
+        mcTruthExists = true;
+      }
+    }
 
     caloparticle tmpcp_;
     tmpcp_.idx_ = idx;
@@ -613,6 +656,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     }      // end of looping over the sim clusters
     
     caloparticles.push_back(tmpcp_);
+    convAbsDzs.push_back( mcTruthExists ? mcTruthPho.vertex().vect().z() : -1. );
     
   }  // end of looping over the calo particles
 
@@ -699,7 +743,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
     //fill this here - duplicated across tracksters trees...
     lighttreeVec[iT].initialiseTreeVariables((size_t)irun,(int)ievent,(size_t)ilumiblock); 
-    lighttreeVec[iT].fillCPinfo(caloparticles);
+    lighttreeVec[iT].fillCPinfo(caloparticles, convAbsDzs);
     lighttreeVec[iT].fillSCinfo(simclust);
     
     auto const& tracksters = *(trkstersVec[iT]);//dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop

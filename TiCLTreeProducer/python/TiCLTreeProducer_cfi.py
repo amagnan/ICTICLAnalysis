@@ -2,6 +2,9 @@ import FWCore.ParameterSet.Config as cms
 
 ticlTree = cms.EDAnalyzer('TiCLTreeProducer',
                      caloParticles      = cms.InputTag("mix"                , "MergedCaloTruth"),
+                     genParticles       = cms.InputTag("genParticles"                , "", "HLT"),
+                     simTracks          = cms.InputTag("g4SimHits"                , "", "SIM"),
+                     simVertices        = cms.InputTag("g4SimHits"                , "", "SIM"),
                      simClusters        = cms.InputTag("mix"                , "MergedCaloTruth"),
                      hgcalRecHitsEE     = cms.InputTag("HGCalRecHit"        , "HGCEERecHits"),
                      hgcalRecHitsFH     = cms.InputTag("HGCalRecHit"        , "HGCHEFRecHits"),
