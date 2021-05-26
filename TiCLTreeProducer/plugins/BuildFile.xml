@@ -36,6 +36,7 @@
 <use name="FWCore/ParameterSet"/>
 <use name="FWCore/Common"/>
 <use name="FWCore/ServiceRegistry"/>
+<use name="RecoEgamma/EgammaMCTools"/>
 <flags   EDM_PLUGIN="1"/>
 <Flags CXXFLAGS="-O0"/>
 <Flags CXXFLAGS="-g"/>

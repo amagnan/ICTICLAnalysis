@@ -95,6 +95,7 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("cp_pt", &cp_pt);
   outputTree->Branch("cp_eta", &cp_eta);
   outputTree->Branch("cp_phi", &cp_phi);
+  outputTree->Branch("cp_convAbsDz", &cp_convAbsDz);
   outputTree->Branch("cp_pdgid", &cp_pdgid);
   
   outputTree->Branch("nSC", &nSC, "nSC/I");
@@ -228,6 +229,7 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   cp_pt.clear();
   cp_eta.clear();
   cp_phi.clear();
+  cp_convAbsDz.clear();
 
   nSC = 0;
   sc_CPidx.clear();
@@ -330,7 +332,7 @@ void LightTree::fillTriplets(const std::vector< std::vector<Triplet> > & aTriple
 }
 
 
-void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles){
+void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles, const std::vector<float> dzs){
   nCP = caloparticles.size();
   for (int icp = 0; icp < nCP; ++icp) {
     cp_nSC.push_back(caloparticles[icp].nSC_);
@@ -338,6 +340,7 @@ void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles){
     cp_pt.push_back(caloparticles[icp].pt_);
     cp_eta.push_back(caloparticles[icp].eta_);
     cp_phi.push_back(caloparticles[icp].phi_);
+    cp_convAbsDz.push_back(dzs[icp]);
     cp_pdgid.push_back(caloparticles[icp].pdgid_);
     cp_missingEnergyFraction.push_back(0);
   }
