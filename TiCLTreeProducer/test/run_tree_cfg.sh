@@ -6,16 +6,16 @@
 #PTETA=_
 
 
-EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/210420
+EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/
 #210325
 #EMonlyNew
 #EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/EMonlyNewDef
 #GEOMDIR=D49_Dummy_new/
-GEOMDIR=D49_AllTracksters/
+GEOMDIR=D49_FineCalo/
 
-for PT in 3 5 10 15 20 30 40 50 75 100 150 200;
+#for PT in 3 5 10 15 20 30 40 50 75 100 150 200;
 #for PT in 3 10 20 50 100 150 200;
-#for PT in 40 50 75 100 150 200;
+for PT in 50;
 do
     for eta in 21; #17 19 23 25 27;
     do
@@ -34,13 +34,13 @@ do
 
 	PTETA=_pt${PT}_eta${eta}
 
-	for d in ElectronsFromVtx #CloseByPhotonsFromVtx #CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
-	#for d in ChargedPionsFromVtx #CloseByPhotons #CloseByPhotonsFromVtxWithPU
+	#for d in ElectronsFromVtx #CloseByPhotonsFromVtx #CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
+	for d in ChargedPionsFromVtx/FineCalo #CloseByPhotons #CloseByPhotonsFromVtxWithPU
 	do
 	    echo "Processing "$GEOMDIR" "$d
 	    # Establish output directory based on sample name.
 	    # Check if it exists, create if not.
-	    OUT_DIR=$(basename $d)
+	    OUT_DIR=$d #$(basename $d)
 	    if [ ! -e ${GEOMDIR}$OUT_DIR ]; then
 		echo "Creating directory ${GEOMDIR}$OUT_DIR"
 		mkdir -p ${GEOMDIR}${OUT_DIR}
@@ -77,7 +77,7 @@ do
     done
 done
 
-for d in ElectronsFromVtx #ChargedPionsFromVtx #CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
+for d in ChargedPionsFromVtx/FineCalo #CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
 do
     echo "for PT in 3 5 10 15 20 30 40 50 75 100 150 200; do for eta in 17 19 21 23 25 27; do PTETA=_pt\${PT}_eta\${eta}; rm $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root; hadd $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root $GEOMDIR/$d/step3ticl\${PTETA}_run*_FlatTracksters.root; done; done"
 done
