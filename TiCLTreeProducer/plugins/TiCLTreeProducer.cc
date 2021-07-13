@@ -27,13 +27,25 @@
 
 #include "RecoLocalCalo/HGCalRecAlgos/interface/RecHitTools.h"
 
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticleFwd.h"
+
+#include "RecoEgamma/EgammaMCTools/interface/ElectronMCTruthFinder.h"
+#include "RecoEgamma/EgammaMCTools/interface/ElectronMCTruth.h"
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruthFinder.h"
+#include "RecoEgamma/EgammaMCTools/interface/PhotonMCTruth.h"
+
 #include "SimDataFormats/CaloAnalysis/interface/CaloParticle.h"
 #include "SimDataFormats/CaloAnalysis/interface/CaloParticleFwd.h"
 
 #include "SimDataFormats/CaloAnalysis/interface/SimClusterFwd.h"
 #include "SimDataFormats/CaloAnalysis/interface/SimCluster.h"
 
+#include "SimDataFormats/Associations/interface/LayerClusterToSimClusterAssociator.h"
+#include "SimDataFormats/Associations/interface/LayerClusterToSimClusterAssociatorBaseImpl.h"
+
 #include "SimDataFormats/Vertex/interface/SimVertex.h"
+#include "SimDataFormats/Track/interface/SimTrack.h"
 #include "RecoLocalCalo/HGCalRecProducers/interface/HGCalClusteringAlgoBase.h"
 
 #include "DataFormats/ParticleFlowReco/interface/HGCalMultiCluster.h"
@@ -93,17 +105,18 @@ private:
                           const HGCRecHitCollection& rechitsEE,
                           const HGCRecHitCollection& rechitsFH,
                           const HGCRecHitCollection& rechitsBH) const;
-  std::vector<int> getClosestTrackstersToCPByIndex(const caloparticle& cp,
-						   const reco::CaloClusterCollection& lcs,
-                                                   const std::vector<ticl::Trackster>& trkster,
-                                                   float maxDrTrksterCP,
-						   const std::map<DetId, const HGCRecHit*>& hitMap);
-  int isRecHitMatchedToCPRecHits(DetId detid_, const std::vector<DetId>& rechitdetid_);
+  std::vector<unsigned> getClosestTrackstersToCPByIndex(const caloparticle& cp,
+							const reco::CaloClusterCollection& lcs,
+							const std::vector<ticl::Trackster>& trkster,
+							float maxDrTrksterCP,
+							const std::map<DetId, const HGCRecHit*>& hitMap);
+
   double getTrksterEnFromCP(const ticl::Trackster& trkster,
                            const reco::CaloClusterCollection& lcs,
                            const caloparticle& cp);
   void fillLCvector(std::vector<layercluster> & aLCvec,
 		    const reco::BasicCluster& aLC,
+		    const unsigned & aIdx,
 		    const int & tsMult,
 		    const std::map<DetId, const HGCRecHit*>& hitMap);
   void getLCs(const reco::CaloClusterCollection& lcs, 
@@ -125,14 +138,26 @@ private:
   
   // ----------member data ---------------------------
   edm::EDGetTokenT<std::vector<CaloParticle>> caloParticlesToken_;
+  edm::EDGetTokenT<std::vector<reco::GenParticle>> genParticlesToken_;
+  edm::EDGetTokenT<std::vector<SimTrack>> simTracksToken_;
+  edm::EDGetTokenT<std::vector<SimVertex>> simVerticesToken_;
   edm::EDGetTokenT<std::vector<SimCluster>> simClustersToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsEEToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsFHToken_;
   edm::EDGetTokenT<HGCRecHitCollection> hgcalRecHitsBHToken_;
 
   std::vector<edm::EDGetTokenT<std::vector<ticl::Trackster> > > trksterTokenVec_;
+
+  edm::InputTag associatorLayerClusterSimCluster_;
+  edm::EDGetTokenT<hgcal::SimToRecoCollectionWithSimClusters> associatorMapSimToRecoToken_;
+  edm::EDGetTokenT<hgcal::RecoToSimCollectionWithSimClusters> associatorMapRecoToSimToken_;  
+
   edm::EDGetTokenT<reco::CaloClusterCollection> hgcalLayerClustersToken_;
   edm::EDGetTokenT<edm::ValueMap<std::pair<float, float> > > hgcalLayerClusterTimeToken_;
+
+  PhotonMCTruthFinder photonMCTruthFinder_;
+
+  unsigned debug;
 
   const unsigned nL = 28;
 
@@ -168,6 +193,9 @@ private:
 
 TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   caloParticlesToken_(consumes<std::vector<CaloParticle>>(iConfig.getParameter<edm::InputTag>("caloParticles"))),
+  genParticlesToken_(consumes<std::vector<reco::GenParticle>>(iConfig.getParameter<edm::InputTag>("genParticles"))),
+  simTracksToken_(consumes<std::vector<SimTrack>>(iConfig.getParameter<edm::InputTag>("simTracks"))),
+  simVerticesToken_(consumes<std::vector<SimVertex>>(iConfig.getParameter<edm::InputTag>("simVertices"))),
   simClustersToken_(consumes<std::vector<SimCluster>>(iConfig.getParameter<edm::InputTag>("simClusters"))),
   hgcalRecHitsEEToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsEE"))),
   hgcalRecHitsFHToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsFH"))),
@@ -177,8 +205,13 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
 //hadTrksterToken_(consumes<std::vector<ticl::Trackster>>(iConfig.getParameter<edm::InputTag>("hadTrkster"))),
 //mipTrksterToken_(consumes<std::vector<ticl::Trackster>>(iConfig.getParameter<edm::InputTag>("mipTrkster"))),
 //mergeTrksterToken_(consumes<std::vector<ticl::Trackster>>(iConfig.getParameter<edm::InputTag>("mergeTrkster"))),
+  associatorLayerClusterSimCluster_(iConfig.getUntrackedParameter<edm::InputTag>("layerClusterSimClusterAssociator")),
+  associatorMapSimToRecoToken_(consumes<hgcal::SimToRecoCollectionWithSimClusters>(associatorLayerClusterSimCluster_)),
+  associatorMapRecoToSimToken_(consumes<hgcal::RecoToSimCollectionWithSimClusters>(associatorLayerClusterSimCluster_)),
   hgcalLayerClustersToken_(consumes<reco::CaloClusterCollection>(iConfig.getParameter<edm::InputTag>("hgcalLayerClusters"))),
-  hgcalLayerClusterTimeToken_(consumes<edm::ValueMap<std::pair<float, float>>>(iConfig.getParameter<edm::InputTag>("layerClusterTime"))) {
+  hgcalLayerClusterTimeToken_(consumes<edm::ValueMap<std::pair<float, float>>>(iConfig.getParameter<edm::InputTag>("layerClusterTime"))),
+  photonMCTruthFinder_()
+  {
 
   recHitTools.reset(new hgcal::RecHitTools());
   //now do what ever initialization is needed
@@ -186,6 +219,7 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   edm::Service<TFileService> file;
 
   fillTripletsInfo = iConfig.getParameter<int>("FillTripletsInfo");
+  debug = iConfig.getParameter<int>("Debug");
 
   std::cout << " -- Running on Tracksters: " << std::endl;
   std::vector<edm::InputTag> inputVec = iConfig.getParameter<std::vector<edm::InputTag> >("trksterVec");
@@ -196,7 +230,7 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   for (unsigned iT(0); iT<nIters; ++iT){
     trksterTokenVec_.push_back(consumes<std::vector<ticl::Trackster>>(inputVec[iT]));
     std::cout << inputVec[iT] << " " << iterTypeVec[iT] << std::endl;
-    lighttreeVec[iT].makeTree(file,iterTypeVec[iT],fillTripletsInfo);
+    lighttreeVec[iT].makeTree(file,iterTypeVec[iT],fillTripletsInfo,debug);
   }
   treeAllLC = file->make<TTree>("treeLC", "treeAllLC");
 
@@ -237,17 +271,17 @@ void TiCLTreeProducer::fillHitMap(std::map<DetId, const HGCRecHit*>& hitMap,
 }  // end of TiCLTreeProducer::fillHitMap
 
 
-std::vector<int> TiCLTreeProducer::getClosestTrackstersToCPByIndex(const caloparticle& cp,
+std::vector<unsigned> TiCLTreeProducer::getClosestTrackstersToCPByIndex(const caloparticle& cp,
 								   const reco::CaloClusterCollection& lcs,
 								   const std::vector<ticl::Trackster>& trksters,
 								   float maxDrTrksterCP,
 								   const std::map<DetId, const HGCRecHit*>& hitMap) {
-  std::vector<int> closestTrksters_;
-  int idx = 0;
+  std::vector<unsigned> closestTrksters_;
+  unsigned idx = 0;
   for (auto const& t : trksters) {
     std::vector<layercluster> lcsFromTrkster;
     getLCsFromTrkster(t, lcs, lcsFromTrkster,hitMap);
-    if (lcsFromTrkster.size()==0) return closestTrksters_;
+    if (lcsFromTrkster.size()==0) continue;
     std::sort(lcsFromTrkster.begin(), lcsFromTrkster.end(), sortLCsByEnergyAndLayer);
       
     float dr = reco::deltaR(cp.eta_, cp.phi_, lcsFromTrkster[0].eta_, lcsFromTrkster[0].phi_);
@@ -259,21 +293,15 @@ std::vector<int> TiCLTreeProducer::getClosestTrackstersToCPByIndex(const calopar
   return closestTrksters_;
 }
 
-int TiCLTreeProducer::isRecHitMatchedToCPRecHits(DetId detid_, const std::vector<DetId>& rechitdetid_) {
-  auto found = std::find(std::begin(rechitdetid_), std::end(rechitdetid_), detid_);
-
-  return (found != rechitdetid_.end()) ? std::distance(std::begin(rechitdetid_), found) : -1;
-}  // end of matchRecHit2CPRecHits
-
 double TiCLTreeProducer::getTrksterEnFromCP(const ticl::Trackster& trkster,
-                              const reco::CaloClusterCollection& lcs,
-                              const caloparticle& cp) {
-  //std::cout << " IN getTrksterEnFromCP: cp E = " << cp.energy_ << std::endl;
+					    const reco::CaloClusterCollection& lcs,
+					    const caloparticle& cp) {
+  //std::cout << " -- IN getTrksterEnFromCP: trackster E = " << trkster.raw_energy() << std::endl;
   double enFromRecHits_ = 0.;
 
   // get the indices associated to the LCs of this trackster
   const std::vector<unsigned int>& lcIdxs_ = trkster.vertices();
-
+  //if (debug) std::cout << " --- number of LCs " << lcIdxs_.size() << std::endl;
   // loop over these idxs
   for (unsigned int ilc = 0; ilc < lcIdxs_.size(); ++ilc) {
     // get the lc and the corresponding rechits to this lc
@@ -282,9 +310,9 @@ double TiCLTreeProducer::getTrksterEnFromCP(const ticl::Trackster& trkster,
     // loop over the rechits of this specific layer cluster
     for (unsigned int j = 0; j < hf.size(); j++) {
       const DetId detid_ = hf[j].first;
-      int detid_idx = isRecHitMatchedToCPRecHits(detid_, cp.rechitdetid_);
-      if (detid_idx >= 0) {
-        enFromRecHits_ += cp.rechitenergy_[detid_idx];//already multiplied by fraction
+      std::map<DetId,double>::const_iterator lFound = cp.rechitsmap_.find(detid_);
+      if (lFound != cp.rechitsmap_.end()) {
+        enFromRecHits_ += lFound->second;//already multiplied by fraction
       }
     }  // end of looping over the rechits
   }    // end of looping over the idxs
@@ -299,7 +327,7 @@ void TiCLTreeProducer::getLCs(const reco::CaloClusterCollection& lcs,
   
   for (unsigned int ilc = 0; ilc < lcs.size(); ++ilc) {
     const reco::BasicCluster& lc = lcs.at(ilc);
-    fillLCvector(layerclusters,lc,-2,hitMap);
+    fillLCvector(layerclusters,lc,ilc,-2,hitMap);
   }
 
 }  // end of getLCs
@@ -313,7 +341,7 @@ void TiCLTreeProducer::getLCsFromTrkster(const ticl::Trackster& trkster,
 
   for (unsigned int ilc = 0; ilc < lcIdxs.size(); ++ilc) {
     const reco::BasicCluster& lc = lcs.at(lcIdxs[ilc]);
-    fillLCvector(layerclusters,lc,trkster.vertex_multiplicity(ilc),hitMap);
+    fillLCvector(layerclusters,lc,lcIdxs[ilc],trkster.vertex_multiplicity(ilc),hitMap);
   }
 
 }  // end of getLCsFromTrkster
@@ -321,6 +349,7 @@ void TiCLTreeProducer::getLCsFromTrkster(const ticl::Trackster& trkster,
 
 void TiCLTreeProducer::fillLCvector(std::vector<layercluster> & aLCvec,
 				    const reco::BasicCluster& aLC,
+				    const unsigned & aIdx,
 				    const int & tsMult,
 				    const std::map<DetId, const HGCRecHit*>& hitMap){
   auto const& hf = aLC.hitsAndFractions();
@@ -362,6 +391,7 @@ void TiCLTreeProducer::fillLCvector(std::vector<layercluster> & aLCvec,
   layercluster_.z_ = aLC.position().z();
   layercluster_.nrechits_ = aLC.hitsAndFractions().size();
   layercluster_.layer_ = abs(layer_);
+  layercluster_.idxTracksterLC_ = aIdx;
 }
 
 void TiCLTreeProducer::initialiseLCTreeVariables(){
@@ -511,6 +541,24 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   iEvent.getByToken(caloParticlesToken_, CaloParticles);
   const CaloParticleCollection& cps = *CaloParticles;
 
+  edm::Handle<std::vector<reco::GenParticle>> genParticles;
+  iEvent.getByToken(genParticlesToken_, genParticles);
+
+  edm::Handle<std::vector<SimTrack>> simTracks;
+  iEvent.getByToken(simTracksToken_, simTracks);
+
+  edm::Handle<std::vector<SimVertex>> simVertices;
+  iEvent.getByToken(simVerticesToken_, simVertices);
+
+  //edm::Handle<hgcal::SimToRecoCollectionWithSimClusters> simToRecoCollHandle;
+  //iEvent.getByToken(associatorMapSimToRecoToken_, simToRecoCollHandle);
+  //const hgcal::SimToRecoCollectionWithSimClusters& simToRecoColl = *simToRecoCollHandle;
+
+  edm::Handle<hgcal::RecoToSimCollectionWithSimClusters> recoToSimCollHandle;
+  iEvent.getByToken(associatorMapRecoToSimToken_, recoToSimCollHandle);
+  //const hgcal::RecoToSimCollectionWithSimClusters& recoToSimColl = *recoToSimCollHandle;
+  auto recSimColl = *recoToSimCollHandle; 
+
   edm::Handle<reco::CaloClusterCollection> layerClusterHandle;
   iEvent.getByToken(hgcalLayerClustersToken_, layerClusterHandle);
   const reco::CaloClusterCollection& lcs = *layerClusterHandle;
@@ -525,15 +573,21 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   // init vars
   //recHitTools->getEventSetup(iSetup);
 
+  if (debug) std::cout << " - Processing event " << iEvent.id().event() << std::endl;
+
   initialiseLCTreeVariables();
+
+  // get photon truth info for conversions
+  auto mcTruthPhotons = photonMCTruthFinder_.find(*simTracks, *simVertices);
+  PhotonMCTruth mcTruthPho;
 
   // get CaloParticles
   std::vector<caloparticle> caloparticles;
-  std::vector<simcluster> simclust[cps.size()];
+  std::vector<float> convAbsDzs;
+  std::vector<simcluster> simclust;
   int idx = -1;
   for (const auto& it_cp : cps) {
     const CaloParticle& cp = ((it_cp));
-    idx++;
 
     if ((cp.eventId().event() != 0) || (cp.eventId().bunchCrossing() != 0)) {
       continue;
@@ -542,6 +596,17 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     // allow CP only within HGCAL volume
     if ((abs(cp.eta()) < 1.2) || (abs(cp.eta()) > 3.5)) {
       continue;
+    }
+    idx++;
+
+    bool mcTruthExists = false;
+    float minDR = 10.;
+    for( auto mcpho : mcTruthPhotons) {
+      if( abs((mcpho.fourMomentum().et() - cp.pt()) / cp.pt()) < 0.5 && deltaR(mcpho.fourMomentum().eta(), mcpho.fourMomentum().phi(), cp.eta(), cp.phi()) < minDR ) {
+        minDR = deltaR(mcpho.fourMomentum().eta(), mcpho.fourMomentum().phi(), cp.eta(), cp.phi());
+        mcTruthPho = mcpho;
+        mcTruthExists = true;
+      }
     }
 
     caloparticle tmpcp_;
@@ -552,10 +617,12 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     tmpcp_.eta_ = cp.eta();
     tmpcp_.phi_ = cp.phi();
 
-    //std::cout << tmpcp_.print() << std::endl;
-
     // get the simclusters
     const SimClusterRefVector& simclusters = cp.simClusters();
+    tmpcp_.nSC_ = simclusters.size();
+
+    if (debug) std::cout << tmpcp_.print() << std::endl;
+
     for (const auto& it_simc : simclusters) {
       const SimCluster& simc = (*(it_simc));
       const auto& sc_haf = simc.hits_and_fractions();
@@ -567,7 +634,10 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       tmpsc_.pt_ = simc.pt();
       tmpsc_.eta_ = simc.eta();
       tmpsc_.phi_ = simc.phi();
-      simclust[idx].push_back(tmpsc_);
+
+      if (debug) std::cout << tmpsc_.print() << std::endl;
+
+      simclust.push_back(tmpsc_);
       // get the rechits
       for (const auto& it_sc_haf : sc_haf) {
         DetId detid_ = (it_sc_haf.first);
@@ -579,15 +649,15 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
         // a RecHit -- due to thresholds or whatever
         if (itcheck != hitMap.end()) {
           const HGCRecHit* hit = itcheck->second;
-          tmpcp_.rechitdetid_.push_back(detid_);
-          tmpcp_.rechitenergy_.push_back((it_sc_haf.second) * hit->energy());
-
+	  std::pair<std::map<DetId,double>::iterator,bool> lInsert = tmpcp_.rechitsmap_.insert(std::pair<DetId,double>(detid_,(it_sc_haf.second) * hit->energy()));
+	  if (!lInsert.second) lInsert.first->second += (it_sc_haf.second) * hit->energy();
         }  //  end of if(itcheck != hitMap.end())
       }    // end of looping over the rechits
     }      // end of looping over the sim clusters
-
+    
     caloparticles.push_back(tmpcp_);
-
+    convAbsDzs.push_back( mcTruthExists ? mcTruthPho.vertex().vect().z() : -1. );
+    
   }  // end of looping over the calo particles
 
   // get the relevant trackster collection
@@ -666,59 +736,73 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   
   treeAllLC->Fill();
 
-  for (unsigned int icp = 0; icp < caloparticles.size(); ++icp) {
+  if (debug) std::cout << " - nAllLC = " << nAllLC << std::endl;
+
+  for (unsigned iT(0); iT<nIters; ++iT){
+    if (debug) std::cout << " -- Processing iter " << iterTypeVec[iT] << std::endl;
+
+    //fill this here - duplicated across tracksters trees...
+    lighttreeVec[iT].initialiseTreeVariables((size_t)irun,(int)ievent,(size_t)ilumiblock); 
+    lighttreeVec[iT].fillCPinfo(caloparticles, convAbsDzs);
+    lighttreeVec[iT].fillSCinfo(simclust);
+    
+    auto const& tracksters = *(trkstersVec[iT]);//dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
+    //auto const& tracksters = dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
+    
+    if (debug) std::cout << " --- Number of tracksters: " << tracksters.size() << std::endl;
+
+    // find the tracksters within some DR from the CP
 
     float maxDrTracksterCP = 0.3;
-    
-    for (unsigned iT(0); iT<nIters; ++iT){
-
-      //fill this here - duplicated across tracksters trees...
-      lighttreeVec[iT].initialiseTreeVariables((size_t)irun,(int)ievent,(size_t)ilumiblock); 
-      lighttreeVec[iT].fillCPinfo(caloparticles,icp);
-      lighttreeVec[iT].fillSCinfo(simclust[icp]);
-
-      auto const& tracksters = *(trkstersVec[iT]);//dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
-      //auto const& tracksters = dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
+    int itrksterMin_ = -1;
+    for (unsigned int icp = 0; icp < caloparticles.size(); ++icp) {
       
-      // find the tracksters within some DR from the CP
-      std::vector<int> closestTracksters =
+      //AM@TODO
+      //Add also CPidx and SCidx of closest CP/SC to trackster...
+
+      std::vector<unsigned> closestTracksters =
 	getClosestTrackstersToCPByIndex(caloparticles[icp], lcs, tracksters, maxDrTracksterCP,hitMap);
-      
+
+      if (debug) std::cout << " --- CaloParticle " << icp << " E=" << caloparticles[icp].energy_<< " nb closest tracksters = " << closestTracksters.size() << std::endl;
+
       // for those tracksters closest to the CP calculate the energy that is associated to the CP
       // and select the one with the closest Energy to the CP
       double trksterCPEnDiffMin_ = std::numeric_limits<double>::max();
-      int itrksterMin_ = -1;
-      for (int itrkster : closestTracksters) {
+      for (unsigned itrkster : closestTracksters) {
 	double trksterEnFromCP_ = getTrksterEnFromCP(tracksters[itrkster], lcs, caloparticles[icp]);
 	double trksterCPEnDiff = abs(caloparticles[icp].energy_ - trksterEnFromCP_) / (caloparticles[icp].energy_);
+	if (debug>1) std::cout << " ---- trackster idx " << itrkster << " with E " << tracksters[itrkster].raw_energy() << " EfromCP = " << trksterEnFromCP_ << std::endl;
 	if (trksterCPEnDiff < trksterCPEnDiffMin_) {
 	  trksterCPEnDiffMin_ = trksterCPEnDiff;
 	  //if (trksterCPEnDiff < trackstersEnFromCP) {
           itrksterMin_ = itrkster;
-          lighttreeVec[iT].fillCPEfraction(trksterCPEnDiff);
-	  //std::cout << " Chose trackster idx " << itrkster << " with E " << trksterEnFromCP_ << std::endl;
+          lighttreeVec[iT].fillCPEfraction(trksterCPEnDiff,icp);
 	  //}
 	  //else std::cout << " Don't record missingE..." << std::endl;
 	}
       }
-      
-      
-	
-      std::vector<layercluster> lcsFromClosestTrksterToCP;
-      if (itrksterMin_>=0) {
-	getLCsFromTrkster(tracksters[itrksterMin_], lcs, lcsFromClosestTrksterToCP,hitMap);
-	std::sort(lcsFromClosestTrksterToCP.begin(), lcsFromClosestTrksterToCP.end(), sortLCsByEnergyAndLayer);
-      }
+      if (debug>0) std::cout << " --- Chose index " << itrksterMin_ << " !" << std::endl;
 
-      lighttreeVec[iT].fillTSinfo(tracksters,itrksterMin_,lcsFromClosestTrksterToCP);
+    }//loop over CP
       
-      if (itrksterMin_>=0 && fillTripletsInfo) fillDoubletsInfo(tracksters[itrksterMin_],lcs,lighttreeVec[iT]);
       
-      lighttreeVec[iT].fillOutputTree();
-    }//loop on iterations
+    std::vector<std::vector<layercluster> > lcsFromTrksters;
+    lcsFromTrksters.reserve(tracksters.size());
+    for (unsigned its = 0; its < tracksters.size(); ++its) {
+      std::vector<layercluster> lcsFromTrkster;
+      getLCsFromTrkster(tracksters[its], lcs, lcsFromTrkster,hitMap);
+      std::sort(lcsFromTrkster.begin(), lcsFromTrkster.end(), sortLCsByEnergyAndLayer);
+      lcsFromTrksters.push_back(lcsFromTrkster);
+    }
     
-  }    // end of looping over the caloparticles
-}
+    lighttreeVec[iT].fillTSinfo(tracksters,nLayers,lcsFromTrksters,layerClusterHandle,recSimColl);
+      
+    //if (itrksterMin_>=0 && fillTripletsInfo) fillDoubletsInfo(tracksters[itrksterMin_],lcs,lighttreeVec[iT]);
+    
+    lighttreeVec[iT].fillOutputTree();
+  }//loop on iterations
+    
+}//analyze
 
 // ------------ method called once each job just before starting event loop  ------------
 void TiCLTreeProducer::beginJob() {}

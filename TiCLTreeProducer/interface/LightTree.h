@@ -12,6 +12,10 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "DataFormats/HGCalReco/interface/Trackster.h"
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "DataFormats/CaloRecHit/interface/CaloClusterFwd.h"
+#include "SimDataFormats/Associations/interface/LayerClusterToSimClusterAssociator.h"
+#include "SimDataFormats/Associations/interface/LayerClusterToSimClusterAssociatorBaseImpl.h"
 
 
 // Common Data Formats used by the ntuple
@@ -25,7 +29,8 @@ class LightTree {
   
   void makeTree(edm::Service<TFileService> & aFile,
 		const std::string & aIterName,
-		const int aFillTripletsInfo);
+		const int aFillTripletsInfo,
+		const unsigned aDebug);
   
   
   void initialiseTreeVariables(const size_t irun,
@@ -36,19 +41,23 @@ class LightTree {
   void fillTriplets(const std::vector< std::vector<Triplet> > & aTripletVec);
   
   
-  void fillCPinfo(const std::vector<caloparticle> & caloparticles,
-		  const int icp);
+  void fillCPinfo(const std::vector<caloparticle> & caloparticles, const std::vector<float> dzs);
 
   void fillSCinfo(const std::vector<simcluster> & simclusters);
 
   void fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
-		  const int itrksterMin,
-		  const std::vector<layercluster> & lcsFromClosestTrksterToCP);
+		  const unsigned nLayers,
+		  const std::vector<std::vector<layercluster> > & lcsFromTrkster,
+		  const edm::Handle<reco::CaloClusterCollection> & layerClusterHandle,
+		  const hgcal::RecoToSimCollectionWithSimClusters & recSimColl);
+
   
-  inline void fillCPEfraction(const double & trksterCPEnDiff){
-    cp_missingEnergyFraction = trksterCPEnDiff;
+  inline void fillCPEfraction(const double & trksterCPEnDiff,
+			      const unsigned icp){
+    if (cp_missingEnergyFraction.size()<icp+1) return;
+    cp_missingEnergyFraction[icp] = trksterCPEnDiff;
   };
-  
+
   inline void fillOutputTree(){
     outputTree->Fill();
   };
@@ -56,6 +65,7 @@ class LightTree {
  private:
 
   TTree* outputTree;
+  unsigned mDebug;
 
   unsigned nL;
   size_t run, lumi;
@@ -63,49 +73,54 @@ class LightTree {
   double weight;
 
   int nTS;
-  int trackster;
-  double ts_energy;
-  double ts_emEnergy;
-  double ts_regEnergy;
-  double ts_sigma1;
-  double ts_sigma2;
-  double ts_sigma3;
-  double ts_BCx;
-  double ts_BCy;
-  double ts_BCz;
-  double ts_eta_PCA;
-  double ts_phi_PCA;
-  double ts_eta_fromLC;
-  double ts_phi_fromLC;
-  double ts_photon_proba;
-  double ts_ele_proba;
-  double ts_mu_proba;
-  double ts_pi0_proba;
-  double ts_chHad_proba;
-  double ts_neHad_proba;
-  double ts_ambg_proba;
-  double ts_unkwn_proba;
-  int ts_firstLayer;
-  int ts_lastLayer;
-  int ts_outInHopsPerformed;
+  std::vector<int> ts_CPidx;
+  std::vector<int> ts_SCidx;
+  std::vector<double> ts_energy;
+  std::vector<double> ts_emEnergy;
+  std::vector<double> ts_regEnergy;
+  std::vector<double> ts_sigma1;
+  std::vector<double> ts_sigma2;
+  std::vector<double> ts_sigma3;
+  std::vector<double> ts_BCx;
+  std::vector<double> ts_BCy;
+  std::vector<double> ts_BCz;
+  std::vector<double> ts_eta_PCA;
+  std::vector<double> ts_phi_PCA;
+  std::vector<double> ts_eta_fromLC;
+  std::vector<double> ts_phi_fromLC;
+  std::vector<double> ts_photon_proba;
+  std::vector<double> ts_ele_proba;
+  std::vector<double> ts_mu_proba;
+  std::vector<double> ts_pi0_proba;
+  std::vector<double> ts_chHad_proba;
+  std::vector<double> ts_neHad_proba;
+  std::vector<double> ts_ambg_proba;
+  std::vector<double> ts_unkwn_proba;
+  std::vector<int> ts_nLC;
+  std::vector<int> ts_firstLayer;
+  std::vector<int> ts_lastLayer;
+  std::vector<int> ts_outInHopsPerformed;
 
   int nCP;
-  double cp_missingEnergyFraction;
-  double cp_energy;
-  int cp_pdgid;
-  double cp_pt;
-  double cp_eta;
-  double cp_phi;
+  std::vector<double> cp_missingEnergyFraction;
+  std::vector<double> cp_energy;
+  std::vector<int> cp_pdgid;
+  std::vector<int> cp_nSC;
+  std::vector<double> cp_pt;
+  std::vector<double> cp_eta;
+  std::vector<double> cp_phi;
+  std::vector<double> cp_convAbsDz;
 
   int nSC;
+  std::vector<int> sc_CPidx;
   std::vector<double> sc_energy;
   std::vector<int> sc_pdgid;
   std::vector<double> sc_pt;
   std::vector<double> sc_eta;
   std::vector<double> sc_phi;
 
-  
   int nLC;
+  std::vector<int> lc_TSidx;
   std::vector<double> lc_energy;
   std::vector<double> lc_eta;
   std::vector<double> lc_phi;
@@ -120,6 +135,9 @@ class LightTree {
   std::vector<int> lc_nrechits;
   std::vector<int> lc_tsMult;
   std::vector<int> lc_mult;
+  std::vector<int> lc_nSC;
+  std::vector<int> lc_SCidx[5];
+  std::vector<double> lc_SCefrac[5];
 
   int nTriplets[28];
   std::vector<int> triplets_layerA[28];

@@ -2,10 +2,14 @@ import FWCore.ParameterSet.Config as cms
 
 ticlTree = cms.EDAnalyzer('TiCLTreeProducer',
                      caloParticles      = cms.InputTag("mix"                , "MergedCaloTruth"),
+                     genParticles       = cms.InputTag("genParticles"                , "", "HLT"),
+                     simTracks          = cms.InputTag("g4SimHits"                , "", "SIM"),
+                     simVertices        = cms.InputTag("g4SimHits"                , "", "SIM"),
                      simClusters        = cms.InputTag("mix"                , "MergedCaloTruth"),
                      hgcalRecHitsEE     = cms.InputTag("HGCalRecHit"        , "HGCEERecHits"),
                      hgcalRecHitsFH     = cms.InputTag("HGCalRecHit"        , "HGCHEFRecHits"),
                      hgcalRecHitsBH     = cms.InputTag("HGCalRecHit"        , "HGCHEBRecHits"),
+                     layerClusterSimClusterAssociator = cms.untracked.InputTag("layerClusterSimClusterAssociation"),
                      hgcalLayerClusters = cms.InputTag("hgcalLayerClusters" , ""                 , "RECO"),
                      layerClusterTime   = cms.InputTag("hgcalLayerClusters" , "timeLayerCluster" , "RECO"),
                      trksterVec          = cms.VInputTag( 
@@ -30,5 +34,6 @@ ticlTree = cms.EDAnalyzer('TiCLTreeProducer',
                          #"Dummy1","Dummy2","Dummy3",
                          #"EM1","EM2","EM3",
                          #"EM3relax","EMDef",
-                     FillTripletsInfo = cms.int32(0)
+                     FillTripletsInfo = cms.int32(0),
+                     Debug = cms.int32(0)
                  )

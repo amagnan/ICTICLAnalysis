@@ -1,26 +1,28 @@
 #ifndef HGCAL_RECO_ANALYSIS_HGCMLANALYZER_H
 #define HGCAL_RECO_ANALYSIS_HGCMLANALYZER_H
 
-#include <vector>
+#include <map>
 #include "DataFormats/DetId/interface/DetId.h"
 
 struct caloparticle {
   int idx_;
+  int nSC_;
   int pdgid_;
   double energy_;
   double pt_;
   double eta_;
   double phi_;
-  std::vector<DetId> rechitdetid_;
-  std::vector<double> rechitenergy_;
+  std::map<DetId,double> rechitsmap_;
 
   inline std::string print() {
     std::ostringstream lStr;
-    lStr << "CP " << idx_
+    lStr << "-------- CaloParticle print --------" << std::endl 
+	 << "CP " << idx_
 	 << " pdg " << pdgid_
-	 << " E " << energy_ 
+	 << " num SC " << nSC_
+	 << " E " << energy_ << " pT " << pt_
 	 << " eta " << eta_ << " phi " << phi_ 
-	 << " nhits " << rechitenergy_.size() 
+	 << " nhits " << rechitsmap_.size() 
 	 << std::endl;
     return lStr.str();
   };
@@ -36,18 +38,18 @@ struct simcluster {
   double eta_;
   double phi_;
   int nsimhits_;
-  std::vector<DetId> rechitdetid_;
-  std::vector<double> rechitenergy_;
+  std::map<DetId,double> rechitsmap_;
 
   inline std::string print() {
     std::ostringstream lStr;
-    lStr << "SC " << idx_
+    lStr << "-------- SimCluster print --------" << std::endl 
+	 << "SC CPidx " << idx_
 	 << " pdg " << pdgid_
 	 << " E " << energy_ 
 	 << " simE " << simEnergy_ 
 	 << " pt " << pt_ << " eta " << eta_ << " phi " << phi_ 
 	 << " nsimhits " << nsimhits_
-	 << " nhits " << rechitenergy_.size() 
+      //<< " nhits " << rechitsmap_.size() 
 	 << std::endl;
     return lStr.str();
   };
@@ -69,6 +71,7 @@ struct layercluster {
   int layer_;
   int idx2Trackster_;
   int tsMult_;
+  int idxTracksterLC_;
 };
 
 struct trackster {

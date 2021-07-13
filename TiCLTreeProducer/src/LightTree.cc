@@ -1,9 +1,13 @@
 #include "ICTICLAnalysis/TiCLTreeProducer/interface/LightTree.h"
+#include "SimDataFormats/CaloAnalysis/interface/SimClusterFwd.h"
+#include "SimDataFormats/CaloAnalysis/interface/SimCluster.h"
 
 LightTree::LightTree(){
+  //limit triplets to EE only
   nL=28;
 };
 LightTree::~LightTree(){
+  lc_TSidx.clear();
   lc_energy.clear();
   lc_eta.clear();
   lc_phi.clear();
@@ -18,7 +22,12 @@ LightTree::~LightTree(){
   lc_nrechits.clear();
   lc_tsMult.clear();
   lc_mult.clear();
-  
+  lc_nSC.clear();
+  for (unsigned isc(0); isc<5; ++isc){//loop on layers   
+    lc_SCidx[isc].clear();
+    lc_SCefrac[isc].clear();
+  }
+
   for (unsigned iL(0); iL<nL; ++iL){//loop on layers   
     nTriplets[iL] = 0;
     triplets_layerA[iL].clear();
@@ -39,8 +48,10 @@ LightTree::~LightTree(){
 
 void LightTree::makeTree(edm::Service<TFileService> & aFile,
 			 const std::string & aIterName,
-			 const int aFillTripletsInfo){
+			 const int aFillTripletsInfo,
+			 const unsigned aDebug){
 
+  mDebug = aDebug;
 
   outputTree = aFile->make<TTree>(("TSTree_"+aIterName).c_str(), ("tree"+aIterName).c_str());
     
@@ -49,41 +60,46 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("lumi", &lumi, "lumi/I");
   outputTree->Branch("weight", &weight, "weight/D");
   outputTree->Branch("nTS", &nTS, "nTS/I");
-  outputTree->Branch("trackster", &trackster, "trackster/I");
-  outputTree->Branch("ts_energy", &ts_energy, "ts_energy/D");
-  outputTree->Branch("ts_emEnergy", &ts_emEnergy, "ts_emEnergy/D");
-  outputTree->Branch("ts_regEnergy", &ts_regEnergy, "ts_regEnergy/D");
-  outputTree->Branch("ts_sigma1", &ts_sigma1, "ts_sigma1/D");
-  outputTree->Branch("ts_sigma2", &ts_sigma2, "ts_sigma2/D");
-  outputTree->Branch("ts_sigma3", &ts_sigma3, "ts_sigma3/D");
-  outputTree->Branch("ts_BCx", &ts_BCx, "ts_BCx/D");
-  outputTree->Branch("ts_BCy", &ts_BCy, "ts_BCy/D");
-  outputTree->Branch("ts_BCz", &ts_BCz, "ts_BCz/D");
-  outputTree->Branch("ts_eta_PCA", &ts_eta_PCA, "ts_eta_PCA/D");
-  outputTree->Branch("ts_phi_PCA", &ts_phi_PCA, "ts_phi_PCA/D");
-  outputTree->Branch("ts_eta_fromLC", &ts_eta_fromLC, "ts_eta_fromLC/D");
-  outputTree->Branch("ts_phi_fromLC", &ts_phi_fromLC, "ts_phi_fromLC/D");
-  outputTree->Branch("ts_photon_proba", &ts_photon_proba, "ts_photon_proba/D");
-  outputTree->Branch("ts_ele_proba", &ts_ele_proba, "ts_ele_proba/D");
-  outputTree->Branch("ts_mu_proba", &ts_mu_proba, "ts_mu_proba/D");
-  outputTree->Branch("ts_pi0_proba", &ts_pi0_proba, "ts_pi0_proba/D");
-  outputTree->Branch("ts_chHad_proba", &ts_chHad_proba, "ts_chHad_proba/D");
-  outputTree->Branch("ts_neHad_proba", &ts_neHad_proba, "ts_neHad_proba/D");
-  outputTree->Branch("ts_ambg_proba", &ts_ambg_proba, "ts_ambg_proba/D");
-  outputTree->Branch("ts_unkwn_proba", &ts_unkwn_proba, "ts_unkwn_proba/D");
-  outputTree->Branch("ts_firstLayer", &ts_firstLayer, "ts_firstLayer/I");
-  outputTree->Branch("ts_lastLayer", &ts_lastLayer, "ts_lastLayer/I");
-  outputTree->Branch("ts_outInHopsPerformed", &ts_outInHopsPerformed, "ts_outInHopsPerformed/I");
+  outputTree->Branch("ts_CPidx", &ts_CPidx);
+  outputTree->Branch("ts_SCidx", &ts_SCidx);
+  outputTree->Branch("ts_energy", &ts_energy);
+  outputTree->Branch("ts_emEnergy", &ts_emEnergy);
+  outputTree->Branch("ts_regEnergy", &ts_regEnergy);
+  outputTree->Branch("ts_sigma1", &ts_sigma1);
+  outputTree->Branch("ts_sigma2", &ts_sigma2);
+  outputTree->Branch("ts_sigma3", &ts_sigma3);
+  outputTree->Branch("ts_BCx", &ts_BCx);
+  outputTree->Branch("ts_BCy", &ts_BCy);
+  outputTree->Branch("ts_BCz", &ts_BCz);
+  outputTree->Branch("ts_eta_PCA", &ts_eta_PCA);
+  outputTree->Branch("ts_phi_PCA", &ts_phi_PCA);
+  outputTree->Branch("ts_eta_fromLC", &ts_eta_fromLC);
+  outputTree->Branch("ts_phi_fromLC", &ts_phi_fromLC);
+  outputTree->Branch("ts_photon_proba", &ts_photon_proba);
+  outputTree->Branch("ts_ele_proba", &ts_ele_proba);
+  outputTree->Branch("ts_mu_proba", &ts_mu_proba);
+  outputTree->Branch("ts_pi0_proba", &ts_pi0_proba);
+  outputTree->Branch("ts_chHad_proba", &ts_chHad_proba);
+  outputTree->Branch("ts_neHad_proba", &ts_neHad_proba);
+  outputTree->Branch("ts_ambg_proba", &ts_ambg_proba);
+  outputTree->Branch("ts_unkwn_proba", &ts_unkwn_proba);
+  outputTree->Branch("ts_nLC", &ts_nLC);
+  outputTree->Branch("ts_firstLayer", &ts_firstLayer);
+  outputTree->Branch("ts_lastLayer", &ts_lastLayer);
+  outputTree->Branch("ts_outInHopsPerformed", &ts_outInHopsPerformed);
   
   outputTree->Branch("nCP", &nCP, "nCP/I");
-  outputTree->Branch("cp_missingEnergyFraction", &cp_missingEnergyFraction, "cp_missingEnergyFraction/D");
-  outputTree->Branch("cp_energy", &cp_energy, "cp_energy/D");
-  outputTree->Branch("cp_pt", &cp_pt, "cp_pt/D");
-  outputTree->Branch("cp_eta", &cp_eta, "cp_eta/D");
-  outputTree->Branch("cp_phi", &cp_phi, "cp_phi/D");
-  outputTree->Branch("cp_pdgid", &cp_pdgid, "cp_pdgid/I");
+  outputTree->Branch("cp_nSC", &cp_nSC);
+  outputTree->Branch("cp_missingEnergyFraction", &cp_missingEnergyFraction);
+  outputTree->Branch("cp_energy", &cp_energy);
+  outputTree->Branch("cp_pt", &cp_pt);
+  outputTree->Branch("cp_eta", &cp_eta);
+  outputTree->Branch("cp_phi", &cp_phi);
+  outputTree->Branch("cp_convAbsDz", &cp_convAbsDz);
+  outputTree->Branch("cp_pdgid", &cp_pdgid);
   
   outputTree->Branch("nSC", &nSC, "nSC/I");
+  outputTree->Branch("sc_CPidx", &sc_CPidx);
   outputTree->Branch("sc_energy", &sc_energy);
   outputTree->Branch("sc_pt", &sc_pt);
   outputTree->Branch("sc_eta", &sc_eta);
@@ -91,6 +107,7 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("sc_pdgid", &sc_pdgid);
   
   outputTree->Branch("nLC", &nLC, "nLC/I");
+  outputTree->Branch("lc_TSidx", &lc_TSidx);
   outputTree->Branch("lc_energy", &lc_energy);
   outputTree->Branch("lc_eta", &lc_eta);
   outputTree->Branch("lc_phi", &lc_phi);
@@ -105,7 +122,16 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("lc_nrechits", &lc_nrechits);
   outputTree->Branch("lc_tsMult", &lc_tsMult);
   outputTree->Branch("lc_mult", &lc_mult);
-  
+  outputTree->Branch("lc_nSC", &lc_nSC);
+  for (unsigned isc(0); isc<5; ++isc){//loop on layers   
+    std::ostringstream lLabel;
+    lLabel << "lc_SCidx_" << isc;
+    outputTree->Branch(lLabel.str().c_str(), &lc_SCidx[isc]);
+    lLabel.str("");
+    lLabel << "lc_SCefrac_" << isc;
+    outputTree->Branch(lLabel.str().c_str(), &lc_SCefrac[isc]);
+  }
+
   if (aFillTripletsInfo>0){
     for (unsigned iL(0); iL<nL; ++iL){//loop on layers   
       std::ostringstream lName;
@@ -167,41 +193,46 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   weight = 0;
   
   nTS = 0;
-  trackster = -1;
-  ts_energy = 0;
-  ts_emEnergy = 0;
-  ts_regEnergy = 0;
-  ts_sigma1 = 0;
-  ts_sigma2 = 0;
-  ts_sigma3 = 0;
-  ts_BCx = 0;
-  ts_BCy = 0;
-  ts_BCz = 0;
-  ts_eta_PCA = 0;
-  ts_phi_PCA = 0;
-  ts_eta_fromLC = 0;
-  ts_phi_fromLC = 0;
-  ts_photon_proba = 0;
-  ts_ele_proba = 0;
-  ts_mu_proba = 0;
-  ts_pi0_proba = 0;
-  ts_chHad_proba = 0;
-  ts_neHad_proba = 0;
-  ts_ambg_proba = 0;
-  ts_unkwn_proba = 0;
-  ts_firstLayer = 0;
-  ts_lastLayer = 0;
-  ts_outInHopsPerformed = 0;
+  ts_CPidx.clear();
+  ts_SCidx.clear();
+  ts_energy.clear();
+  ts_emEnergy.clear();
+  ts_regEnergy.clear();
+  ts_sigma1.clear();
+  ts_sigma2.clear();
+  ts_sigma3.clear();
+  ts_BCx.clear();
+  ts_BCy.clear();
+  ts_BCz.clear();
+  ts_eta_PCA.clear();
+  ts_phi_PCA.clear();
+  ts_eta_fromLC.clear();
+  ts_phi_fromLC.clear();
+  ts_photon_proba.clear();
+  ts_ele_proba.clear();
+  ts_mu_proba.clear();
+  ts_pi0_proba.clear();
+  ts_chHad_proba.clear();
+  ts_neHad_proba.clear();
+  ts_ambg_proba.clear();
+  ts_unkwn_proba.clear();
+  ts_nLC.clear();
+  ts_firstLayer.clear();
+  ts_lastLayer.clear();
+  ts_outInHopsPerformed.clear();
   
   nCP = 0;
-  cp_missingEnergyFraction = 0;
-  cp_energy = 0;
-  cp_pdgid = 0;
-  cp_pt = 0;
-  cp_eta = 0;
-  cp_phi = 0;
+  cp_nSC.clear();
+  cp_missingEnergyFraction.clear();
+  cp_energy.clear();
+  cp_pdgid.clear();
+  cp_pt.clear();
+  cp_eta.clear();
+  cp_phi.clear();
+  cp_convAbsDz.clear();
 
   nSC = 0;
+  sc_CPidx.clear();
   sc_energy.clear();
   sc_pdgid.clear();
   sc_pt.clear();
@@ -209,6 +240,7 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   sc_phi.clear();
     
   nLC = 0;
+  lc_TSidx.clear();
   lc_energy.clear();
   lc_eta.clear();
   lc_phi.clear();
@@ -223,6 +255,11 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   lc_nrechits.clear();
   lc_tsMult.clear();
   lc_mult.clear();
+  lc_nSC.clear();
+  for (unsigned isc(0); isc<5; ++isc){//loop on layers   
+    lc_SCidx[isc].clear();
+    lc_SCefrac[isc].clear();
+  }
 
   for (unsigned iL(0); iL<nL; ++iL){//loop on layers   
     nTriplets[iL] = 0;
@@ -295,21 +332,24 @@ void LightTree::fillTriplets(const std::vector< std::vector<Triplet> > & aTriple
 }
 
 
-void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles,
-		  const int icp){
+void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles, const std::vector<float> dzs){
   nCP = caloparticles.size();
-  if (icp>=0){
-    cp_energy = caloparticles[icp].energy_;
-    cp_pt = caloparticles[icp].pt_;
-    cp_eta = caloparticles[icp].eta_;
-    cp_phi = caloparticles[icp].phi_;
-    cp_pdgid = caloparticles[icp].pdgid_;
+  for (int icp = 0; icp < nCP; ++icp) {
+    cp_nSC.push_back(caloparticles[icp].nSC_);
+    cp_energy.push_back(caloparticles[icp].energy_);
+    cp_pt.push_back(caloparticles[icp].pt_);
+    cp_eta.push_back(caloparticles[icp].eta_);
+    cp_phi.push_back(caloparticles[icp].phi_);
+    cp_convAbsDz.push_back(dzs[icp]);
+    cp_pdgid.push_back(caloparticles[icp].pdgid_);
+    cp_missingEnergyFraction.push_back(0);
   }
 }
 
 void LightTree::fillSCinfo(const std::vector<simcluster> & simclusters){
   nSC = simclusters.size();
   for (int isc = 0; isc < nSC; ++isc) {
+    sc_CPidx.push_back(simclusters[isc].idx_);
     sc_energy.push_back(simclusters[isc].energy_);
     sc_pt.push_back(simclusters[isc].pt_);
     sc_eta.push_back(simclusters[isc].eta_);
@@ -319,93 +359,164 @@ void LightTree::fillSCinfo(const std::vector<simcluster> & simclusters){
 }
 
 void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
-			   const int itrksterMin,
-			   const std::vector<layercluster> & lcsFromClosestTrksterToCP){
+			   const unsigned nLayers,
+			   const std::vector<std::vector<layercluster>> & lcsFromTrkster,
+			   const edm::Handle<reco::CaloClusterCollection> & layerClusterHandle,
+			   const hgcal::RecoToSimCollectionWithSimClusters & recSimColl)
+{
+  nTS = tracksters.size();
+  nLC = 0;
+  if(lcsFromTrkster.size()!=static_cast<unsigned>(nTS)){
+    std::cout << " -- problem, nTS = " << nTS << " lcs vector size = " << lcsFromTrkster.size() << std::endl;
+    return;
+  }
+  for (int its = 0; its < nTS; ++its) {
+    nLC += lcsFromTrkster[its].size();
+  }
+  lc_TSidx.reserve(nLC);
+  lc_energy.reserve(nLC);
+  lc_eta.reserve(nLC);
+  lc_phi.reserve(nLC);
+  lc_seedEnergy.reserve(nLC);
+  lc_seedEta.reserve(nLC);
+  lc_seedPhi.reserve(nLC);
+  lc_x.reserve(nLC);
+  lc_y.reserve(nLC);
+  lc_z.reserve(nLC);
+  lc_algo.reserve(nLC);
+  lc_layer.reserve(nLC);
+  lc_nrechits.reserve(nLC);
+  lc_tsMult.reserve(nLC);
+  lc_mult.reserve(nLayers*nTS);
+  lc_nSC.reserve(nLC);
+  for (unsigned isc(0); isc<5; ++isc){//loop on layers   
+    lc_SCidx[isc].reserve(nLC);
+    lc_SCefrac[isc].reserve(nLC);
+  }
   
-    nTS = tracksters.size();
-    std::map<int,int>lMapLC;
+  for (int its = 0; its < nTS; ++its) {
+
+    ts_emEnergy.push_back(tracksters[its].raw_em_energy());
+    ts_energy.push_back(tracksters[its].raw_energy());
+    ts_regEnergy.push_back(tracksters[its].regressed_energy());
+    ts_sigma1.push_back(tracksters[its].sigmasPCA()[0]);
+    ts_sigma2.push_back(tracksters[its].sigmasPCA()[1]);
+    ts_sigma3.push_back(tracksters[its].sigmasPCA()[2]);
+    ts_BCx.push_back(tracksters[its].barycenter().x());
+    ts_BCy.push_back(tracksters[its].barycenter().y());
+    ts_BCz.push_back(tracksters[its].barycenter().z());
+    ts_eta_PCA.push_back(tracksters[its].eigenvectors()[0].eta());
+    ts_phi_PCA.push_back(tracksters[its].eigenvectors()[0].phi());
+    ts_outInHopsPerformed.push_back(tracksters[its].outInHopsPerformed());
+    ts_photon_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::photon));
+    ts_ele_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::electron));
+    ts_mu_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::muon));
+    ts_pi0_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType:: neutral_pion));
+    ts_chHad_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::charged_hadron));
+    ts_neHad_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::neutral_hadron));
+    ts_ambg_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::ambiguous));
+    ts_unkwn_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::unknown));
     
-    trackster = itrksterMin;
-    if (itrksterMin >= 0) { 
-	ts_emEnergy = tracksters[itrksterMin].raw_em_energy();
-	ts_energy = tracksters[itrksterMin].raw_energy();
-	ts_regEnergy = tracksters[itrksterMin].regressed_energy();
-	ts_sigma1 = tracksters[itrksterMin].sigmasPCA()[0];
-	ts_sigma2 = tracksters[itrksterMin].sigmasPCA()[1];
-	ts_sigma3 = tracksters[itrksterMin].sigmasPCA()[2];
-	ts_BCx = tracksters[itrksterMin].barycenter().x();
-	ts_BCy = tracksters[itrksterMin].barycenter().y();
-	ts_BCz = tracksters[itrksterMin].barycenter().z();
-	ts_eta_PCA = tracksters[itrksterMin].eigenvectors()[0].eta();
-	ts_phi_PCA = tracksters[itrksterMin].eigenvectors()[0].phi();
-	ts_outInHopsPerformed = tracksters[itrksterMin].outInHopsPerformed();
-	ts_photon_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType::photon);
-	ts_ele_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType::electron);
-	ts_mu_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType::muon);
-	ts_pi0_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType:: neutral_pion);
-	ts_chHad_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType::charged_hadron);
-	ts_neHad_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType::neutral_hadron);
-	ts_ambg_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType::ambiguous);
-	ts_unkwn_proba = tracksters[itrksterMin].id_probability(ticl::Trackster::ParticleType::unknown);
-	
-	lMapLC.clear();
+    std::map<int,int>lMapLC;
+    lMapLC.clear();
+
+    if (mDebug>1) {
+      std::cout << " -- trackster " << its ;
+      std::cout << ", num LC = " << lcsFromTrkster[its].size() << std::endl;
+    }
+    
+    if (lcsFromTrkster[its].size()!=0) {
+      ts_eta_fromLC.push_back(lcsFromTrkster[its][0].eta_);
+      ts_phi_fromLC.push_back(lcsFromTrkster[its][0].phi_);
+    }
+    else {
+      std::cout << " -- Problem, trk " << its << " has no LCs " << std::endl;
+      ts_eta_fromLC.push_back(10);
+      ts_phi_fromLC.push_back(10);
+    }
+    int firstLay=100;
+    int lastLay=0;
+    ts_nLC.push_back(lcsFromTrkster[its].size());
+    
+
+    unsigned lcNum = 0;
+    for (auto const& lc : lcsFromTrkster[its]) {
+      lc_TSidx.push_back(its);
+      lc_energy.push_back(lc.energy_);
+      lc_eta.push_back(lc.eta_);
+      lc_phi.push_back(lc.phi_);
+      lc_seedEnergy.push_back(lc.seedEnergy_);
+      lc_seedEta.push_back(lc.seedEta_);
+      lc_seedPhi.push_back(lc.seedPhi_);
+      lc_x.push_back(lc.x_);
+      lc_y.push_back(lc.y_);
+      lc_z.push_back(lc.z_);
+      lc_algo.push_back(lc.algo_);
+      lc_layer.push_back(lc.layer_);
+      std::pair<std::map<int,int>::iterator,bool> isInserted =  lMapLC.insert(std::pair<int,int>(lc.layer_,1));
+      if (!isInserted.second) isInserted.first->second += 1;
       
-	ts_eta_fromLC = lcsFromClosestTrksterToCP[0].eta_;
-	ts_phi_fromLC = lcsFromClosestTrksterToCP[0].phi_;
-	
-	int firstLay=30;
-	int lastLay=0;
-	nLC = lcsFromClosestTrksterToCP.size();
+      if (lc.layer_<firstLay) firstLay=lc.layer_;
+      if (lc.layer_>lastLay) lastLay=lc.layer_;
+      lc_nrechits.push_back(lc.nrechits_);
+      lc_tsMult.push_back(lc.tsMult_);
 
-	lc_energy.reserve(nLC);
-	lc_eta.reserve(nLC);
-	lc_phi.reserve(nLC);
-	lc_seedEnergy.reserve(nLC);
-	lc_seedEta.reserve(nLC);
-	lc_seedPhi.reserve(nLC);
-	lc_x.reserve(nLC);
-	lc_y.reserve(nLC);
-	lc_z.reserve(nLC);
-	lc_algo.reserve(nLC);
-	lc_layer.reserve(nLC);
-	lc_nrechits.reserve(nLC);
-	lc_tsMult.reserve(nLC);
-	lc_mult.reserve(nL);
 
-	for (auto const& lc : lcsFromClosestTrksterToCP) {
-	  lc_energy.push_back(lc.energy_);
-	  lc_eta.push_back(lc.eta_);
-	  lc_phi.push_back(lc.phi_);
-	  lc_seedEnergy.push_back(lc.seedEnergy_);
-	  lc_seedEta.push_back(lc.seedEta_);
-	  lc_seedPhi.push_back(lc.seedPhi_);
-	  lc_x.push_back(lc.x_);
-	  lc_y.push_back(lc.y_);
-	  lc_z.push_back(lc.z_);
-	  lc_algo.push_back(lc.algo_);
-	  lc_layer.push_back(lc.layer_);
-	  std::pair<std::map<int,int>::iterator,bool> isInserted =  lMapLC.insert(std::pair<int,int>(lc.layer_,1));
-	  if (!isInserted.second) isInserted.first->second += 1;
-	  
-	  if (lc.layer_<firstLay) firstLay=lc.layer_;
-	  if (lc.layer_>lastLay) lastLay=lc.layer_;
-	  lc_nrechits.push_back(lc.nrechits_);
-	  lc_tsMult.push_back(lc.tsMult_);
+      const edm::Ref<reco::CaloClusterCollection> lcRef(layerClusterHandle,lc.idxTracksterLC_);
+      const auto& scsIt = recSimColl.find(lcRef);
+      if (scsIt == recSimColl.end()) { 
+	lcNum++;
+	lc_nSC.push_back(0);
+	continue;
+      }
+      // loop over the SimClusters contributing to this LC 
+      const auto& scs = scsIt->val;
+
+      lc_nSC.push_back(scs.size());
+
+      if (mDebug>2) {
+	std::cout << " LC Id in Trackster = " << lcNum 		  
+		  << " , LC Id in global LC collection = " << lc.idxTracksterLC_
+		  << " , LC layer = " << lc.layer_
+		  << " , E(LC) = " << lc.energy_
+		  << " nSimClus " << scs.size() << " (idx,E) = ";
+	  }
+      unsigned scIter = 0;
+      unsigned numAbove = 0;
+      for (const auto& scPair : scs) {
+	if (mDebug>2) std::cout << "(" << scPair.first.index()
+			       << "," << scPair.second << ") "; 
+	//save only up to 5...
+	if (scPair.second>0.05){
+	  numAbove++;
+	  if (scIter<5) { 
+	    lc_SCidx[scIter].push_back(scPair.first.index());
+	    lc_SCefrac[scIter].push_back(scPair.second);
+	    scIter++;
+	  }
 	}
-	
-	for (unsigned iL(0); iL<nL;++iL){
-	  std::map<int,int>::iterator lEle = lMapLC.find(iL+1);
-	  if (lEle !=lMapLC.end()) lc_mult.push_back(lEle->second);
-	  else lc_mult.push_back(0);
-	}
-	
-	lMapLC.clear();
-	
-	ts_firstLayer = firstLay;
-	ts_lastLayer = lastLay;
-	
-    }//if TS found
-
+      } // end of looping over the SimClusters contributing to this LC
+      if (mDebug>2) {
+	if (mDebug>2) std::cout << std::endl;
+	if (numAbove >5) std::cout << " - Num above 5%: " << numAbove << std::endl;
+      }
+      lcNum++;
+      
+    }//loop over LCs
+    
+    for (unsigned iL(0); iL<nLayers;++iL){
+      std::map<int,int>::iterator lEle = lMapLC.find(iL+1);
+      if (lEle !=lMapLC.end()) lc_mult.push_back(lEle->second);
+      else lc_mult.push_back(0);
+    }
+    
+    lMapLC.clear();
+    
+    ts_firstLayer.push_back(firstLay);
+    ts_lastLayer.push_back(lastLay);
+    
+  }//loop on TS
+  
 }
 
 
