@@ -1,8 +1,17 @@
-#ifndef HGCAL_RECO_ANALYSIS_HGCMLANALYZER_H
-#define HGCAL_RECO_ANALYSIS_HGCMLANALYZER_H
+#ifndef __CommonDataFormats__hh
+#define __CommonDataFormats__hh
 
 #include <map>
 #include "DataFormats/DetId/interface/DetId.h"
+
+
+
+bool sortSCbyEFrac(const std::pair<unsigned,double> &a,
+		   const std::pair<unsigned,double> &b)
+{
+  return (a.second > b.second);
+};
+
 
 struct caloparticle {
   int idx_;
@@ -33,10 +42,17 @@ struct simcluster {
   int idx_;
   int pdgid_;
   double energy_;
+  double energyAtB_;
   double simEnergy_;
+  double ptAtB_;
+  double etaAtB_;
+  double phiAtB_;
   double pt_;
   double eta_;
   double phi_;
+  double xAtB_;
+  double yAtB_;
+  double zAtB_;
   int nsimhits_;
   std::map<DetId,double> rechitsmap_;
 

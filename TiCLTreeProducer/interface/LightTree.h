@@ -114,10 +114,17 @@ class LightTree {
   int nSC;
   std::vector<int> sc_CPidx;
   std::vector<double> sc_energy;
+  std::vector<double> sc_energyAtB;
   std::vector<int> sc_pdgid;
   std::vector<double> sc_pt;
   std::vector<double> sc_eta;
   std::vector<double> sc_phi;
+  std::vector<double> sc_ptAtB;
+  std::vector<double> sc_etaAtB;
+  std::vector<double> sc_phiAtB;
+  std::vector<double> sc_xAtB;
+  std::vector<double> sc_yAtB;
+  std::vector<double> sc_zAtB;
 
   int nLC;
   std::vector<int> lc_TSidx;
@@ -136,6 +143,7 @@ class LightTree {
   std::vector<int> lc_tsMult;
   std::vector<int> lc_mult;
   std::vector<int> lc_nSC;
+  std::vector<int> lc_pdgid;
   std::vector<int> lc_SCidx[5];
   std::vector<double> lc_SCefrac[5];
 

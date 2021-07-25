@@ -23,6 +23,7 @@ LightTree::~LightTree(){
   lc_tsMult.clear();
   lc_mult.clear();
   lc_nSC.clear();
+  lc_pdgid.clear();
   for (unsigned isc(0); isc<5; ++isc){//loop on layers   
     lc_SCidx[isc].clear();
     lc_SCefrac[isc].clear();
@@ -104,6 +105,13 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("sc_pt", &sc_pt);
   outputTree->Branch("sc_eta", &sc_eta);
   outputTree->Branch("sc_phi", &sc_phi);
+  outputTree->Branch("sc_energyAtB", &sc_energyAtB);
+  outputTree->Branch("sc_ptAtB", &sc_ptAtB);
+  outputTree->Branch("sc_etaAtB", &sc_etaAtB);
+  outputTree->Branch("sc_phiAtB", &sc_phiAtB);
+  outputTree->Branch("sc_xAtB", &sc_xAtB);
+  outputTree->Branch("sc_yAtB", &sc_yAtB);
+  outputTree->Branch("sc_zAtB", &sc_zAtB);
   outputTree->Branch("sc_pdgid", &sc_pdgid);
   
   outputTree->Branch("nLC", &nLC, "nLC/I");
@@ -123,6 +131,7 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("lc_tsMult", &lc_tsMult);
   outputTree->Branch("lc_mult", &lc_mult);
   outputTree->Branch("lc_nSC", &lc_nSC);
+  outputTree->Branch("lc_pdgid", &lc_pdgid);
   for (unsigned isc(0); isc<5; ++isc){//loop on layers   
     std::ostringstream lLabel;
     lLabel << "lc_SCidx_" << isc;
@@ -234,10 +243,17 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   nSC = 0;
   sc_CPidx.clear();
   sc_energy.clear();
+  sc_energyAtB.clear();
   sc_pdgid.clear();
   sc_pt.clear();
   sc_eta.clear();
   sc_phi.clear();
+  sc_ptAtB.clear();
+  sc_etaAtB.clear();
+  sc_phiAtB.clear();
+  sc_xAtB.clear();
+  sc_yAtB.clear();
+  sc_zAtB.clear();
     
   nLC = 0;
   lc_TSidx.clear();
@@ -256,6 +272,7 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   lc_tsMult.clear();
   lc_mult.clear();
   lc_nSC.clear();
+  lc_pdgid.clear();
   for (unsigned isc(0); isc<5; ++isc){//loop on layers   
     lc_SCidx[isc].clear();
     lc_SCefrac[isc].clear();
@@ -354,6 +371,13 @@ void LightTree::fillSCinfo(const std::vector<simcluster> & simclusters){
     sc_pt.push_back(simclusters[isc].pt_);
     sc_eta.push_back(simclusters[isc].eta_);
     sc_phi.push_back(simclusters[isc].phi_);
+    sc_energyAtB.push_back(simclusters[isc].energyAtB_);
+    sc_ptAtB.push_back(simclusters[isc].ptAtB_);
+    sc_etaAtB.push_back(simclusters[isc].etaAtB_);
+    sc_phiAtB.push_back(simclusters[isc].phiAtB_);
+    sc_xAtB.push_back(simclusters[isc].xAtB_);
+    sc_yAtB.push_back(simclusters[isc].yAtB_);
+    sc_zAtB.push_back(simclusters[isc].zAtB_);
     sc_pdgid.push_back(simclusters[isc].pdgid_);
   }
 }
@@ -389,6 +413,7 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
   lc_tsMult.reserve(nLC);
   lc_mult.reserve(nLayers*nTS);
   lc_nSC.reserve(nLC);
+  lc_pdgid.reserve(nLC);
   for (unsigned isc(0); isc<5; ++isc){//loop on layers   
     lc_SCidx[isc].reserve(nLC);
     lc_SCefrac[isc].reserve(nLC);
@@ -471,35 +496,39 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
       }
       // loop over the SimClusters contributing to this LC 
       const auto& scs = scsIt->val;
+      std::vector<std::pair<unsigned,double> > scVec;
+      for (const auto& scPair : scs) {
+	scVec.push_back(std::pair<unsigned,double>(scPair.first.index(),scPair.second));
+      }
+      std::sort(scVec.begin(),scVec.end(),sortSCbyEFrac);
 
-      lc_nSC.push_back(scs.size());
-
+      lc_nSC.push_back(scVec.size());
+      if (scVec.size()>0) {
+	lc_pdgid.push_back(sc_pdgid[scVec[0].first]);
+      } else {	
+	lc_pdgid.push_back(0);
+      }
       if (mDebug>2) {
 	std::cout << " LC Id in Trackster = " << lcNum 		  
 		  << " , LC Id in global LC collection = " << lc.idxTracksterLC_
 		  << " , LC layer = " << lc.layer_
 		  << " , E(LC) = " << lc.energy_
-		  << " nSimClus " << scs.size() << " (idx,E) = ";
-	  }
-      unsigned scIter = 0;
-      unsigned numAbove = 0;
-      for (const auto& scPair : scs) {
-	if (mDebug>2) std::cout << "(" << scPair.first.index()
-			       << "," << scPair.second << ") "; 
-	//save only up to 5...
-	if (scPair.second>0.05){
-	  numAbove++;
-	  if (scIter<5) { 
-	    lc_SCidx[scIter].push_back(scPair.first.index());
-	    lc_SCefrac[scIter].push_back(scPair.second);
-	    scIter++;
-	  }
-	}
-      } // end of looping over the SimClusters contributing to this LC
-      if (mDebug>2) {
-	if (mDebug>2) std::cout << std::endl;
-	if (numAbove >5) std::cout << " - Num above 5%: " << numAbove << std::endl;
+		  << " nSimClus " << scVec.size() << " (idx,E) = ";
       }
+      unsigned scIter = 0;
+      for (const auto& scPair : scVec) {
+	//save only up to 5...
+	if (scIter<5) { 
+	  if (mDebug>2) std::cout << "(" << scPair.first
+				  << "," << scPair.second << ") "; 
+	  lc_SCidx[scIter].push_back(scPair.first);
+	  lc_SCefrac[scIter].push_back(scPair.second);
+	  scIter++;
+	}
+	//}
+      } // end of looping over the SimClusters contributing to this LC
+      if (mDebug>2) std::cout << std::endl;
+      
       lcNum++;
       
     }//loop over LCs

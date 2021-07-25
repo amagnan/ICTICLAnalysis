@@ -65,7 +65,6 @@
 #include <string>
 #include <vector>
 
-
 #include "ICTICLAnalysis/TiCLTreeProducer/interface/CommonDataFormats.h"
 
 
@@ -630,10 +629,22 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       simcluster tmpsc_;
       tmpsc_.idx_ = idx;
       tmpsc_.pdgid_ = simc.pdgId();
+
+      auto st = simc.g4Tracks().at(0);
+      auto mom = st.getMomentumAtBoundary();
+      auto pos = st.getPositionAtBoundary();
+
       tmpsc_.energy_ = simc.energy();
       tmpsc_.pt_ = simc.pt();
       tmpsc_.eta_ = simc.eta();
       tmpsc_.phi_ = simc.phi();
+      tmpsc_.energyAtB_ = mom.E();
+      tmpsc_.ptAtB_ = mom.pt();
+      tmpsc_.etaAtB_ = mom.eta();
+      tmpsc_.phiAtB_ = mom.phi();
+      tmpsc_.xAtB_ = pos.x();
+      tmpsc_.yAtB_ = pos.y();
+      tmpsc_.zAtB_ = pos.z();
 
       if (debug) std::cout << tmpsc_.print() << std::endl;
 
