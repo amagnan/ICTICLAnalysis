@@ -7,6 +7,7 @@ LightTree::LightTree(){
   nL=28;
 };
 LightTree::~LightTree(){
+  lc_idx.clear();
   lc_TSidx.clear();
   lc_energy.clear();
   lc_eta.clear();
@@ -62,7 +63,7 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("weight", &weight, "weight/D");
   outputTree->Branch("nTS", &nTS, "nTS/I");
   outputTree->Branch("ts_CPidx", &ts_CPidx);
-  outputTree->Branch("ts_SCidx", &ts_SCidx);
+  outputTree->Branch("ts_seedIdx", &ts_seedIdx);
   outputTree->Branch("ts_energy", &ts_energy);
   outputTree->Branch("ts_emEnergy", &ts_emEnergy);
   outputTree->Branch("ts_regEnergy", &ts_regEnergy);
@@ -115,6 +116,7 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("sc_pdgid", &sc_pdgid);
   
   outputTree->Branch("nLC", &nLC, "nLC/I");
+  outputTree->Branch("lc_idx", &lc_idx);
   outputTree->Branch("lc_TSidx", &lc_TSidx);
   outputTree->Branch("lc_energy", &lc_energy);
   outputTree->Branch("lc_eta", &lc_eta);
@@ -203,7 +205,7 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   
   nTS = 0;
   ts_CPidx.clear();
-  ts_SCidx.clear();
+  ts_seedIdx.clear();
   ts_energy.clear();
   ts_emEnergy.clear();
   ts_regEnergy.clear();
@@ -256,6 +258,7 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   sc_zAtB.clear();
     
   nLC = 0;
+  lc_idx.clear();
   lc_TSidx.clear();
   lc_energy.clear();
   lc_eta.clear();
@@ -382,21 +385,24 @@ void LightTree::fillSCinfo(const std::vector<simcluster> & simclusters){
   }
 }
 
-void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
+void LightTree::fillTSinfo(const unsigned evtNum,
+			   const std::vector<ticl::Trackster> & tracksters,
 			   const unsigned nLayers,
 			   const std::vector<std::vector<layercluster>> & lcsFromTrkster,
 			   const edm::Handle<reco::CaloClusterCollection> & layerClusterHandle,
-			   const hgcal::RecoToSimCollectionWithSimClusters & recSimColl)
+			   const hgcal::RecoToSimCollectionWithSimClusters & recSimColl,
+			   const std::vector<std::vector<double> > & newSimLCmult)
 {
   nTS = tracksters.size();
   nLC = 0;
   if(lcsFromTrkster.size()!=static_cast<unsigned>(nTS)){
-    std::cout << " -- problem, nTS = " << nTS << " lcs vector size = " << lcsFromTrkster.size() << std::endl;
+    std::cout << " -- problem, event " << evtNum << " nTS = " << nTS << " lcs vector size = " << lcsFromTrkster.size() << std::endl;
     return;
   }
   for (int its = 0; its < nTS; ++its) {
     nLC += lcsFromTrkster[its].size();
   }
+  lc_idx.reserve(nLC);
   lc_TSidx.reserve(nLC);
   lc_energy.reserve(nLC);
   lc_eta.reserve(nLC);
@@ -419,8 +425,12 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
     lc_SCefrac[isc].reserve(nLC);
   }
   
+  //std::map<unsigned,double>checkMult;
+  //std::pair<std::map<unsigned,double>::iterator,bool> checkMultInsert;
+
   for (int its = 0; its < nTS; ++its) {
 
+    ts_seedIdx.push_back(tracksters[its].seedIndex());
     ts_emEnergy.push_back(tracksters[its].raw_em_energy());
     ts_energy.push_back(tracksters[its].raw_energy());
     ts_regEnergy.push_back(tracksters[its].regressed_energy());
@@ -455,7 +465,7 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
       ts_phi_fromLC.push_back(lcsFromTrkster[its][0].phi_);
     }
     else {
-      std::cout << " -- Problem, trk " << its << " has no LCs " << std::endl;
+      std::cout << " -- Problem, event " << evtNum << " trk " << its << " has no LCs " << std::endl;
       ts_eta_fromLC.push_back(10);
       ts_phi_fromLC.push_back(10);
     }
@@ -465,7 +475,9 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
     
 
     unsigned lcNum = 0;
+
     for (auto const& lc : lcsFromTrkster[its]) {
+      lc_idx.push_back(lc.idxTracksterLC_);
       lc_TSidx.push_back(its);
       lc_energy.push_back(lc.energy_);
       lc_eta.push_back(lc.eta_);
@@ -484,8 +496,20 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
       if (lc.layer_<firstLay) firstLay=lc.layer_;
       if (lc.layer_>lastLay) lastLay=lc.layer_;
       lc_nrechits.push_back(lc.nrechits_);
-      lc_tsMult.push_back(lc.tsMult_);
-
+      if (newSimLCmult.size()==tracksters.size()) {
+	if (newSimLCmult[its].size() == lcsFromTrkster[its].size())
+	  lc_tsMult.push_back(newSimLCmult[its][lcNum]);
+	else {
+	  if (lcNum==0) std::cout << " Event " << evtNum << " Wrong size of newSim vector for TS " << its << " new " << newSimLCmult[its].size() << " orig " << lcsFromTrkster[its].size() << std::endl;
+	  lc_tsMult.push_back(1);
+	}
+	//checkMultInsert = checkMult.insert(std::pair<unsigned,double>(lc.idxTracksterLC_,1./lc_tsMult[lc_tsMult.size()-1]));
+	//if (!checkMultInsert.second) checkMultInsert.first->second += 1./lc_tsMult[lc_tsMult.size()-1];
+      }
+      else {
+	if (lcNum==0 && its==0 && newSimLCmult.size()>0) std::cout << " Event " << evtNum << " Wrong size of newSim vector ! new " <<  newSimLCmult.size() << " orig " << tracksters.size() << std::endl;
+	lc_tsMult.push_back(lc.tsMult_);
+      }
 
       const edm::Ref<reco::CaloClusterCollection> lcRef(layerClusterHandle,lc.idxTracksterLC_);
       const auto& scsIt = recSimColl.find(lcRef);
@@ -532,7 +556,16 @@ void LightTree::fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
       lcNum++;
       
     }//loop over LCs
-    
+
+    /*if (newSimLCmult.size()>0){
+      std::cout << " Check map in tree: " << std::endl;
+      std::map<unsigned,double>::iterator checkMultIter = checkMult.begin();
+      for (;checkMultIter!=checkMult.end();++checkMultIter){
+	if (checkMultIter->second >1. ) std::cout << " event " << evtNum << " lc " << checkMultIter->first << " sumFrac " << checkMultIter->second << std::endl;
+      }    
+      }*/
+
+
     for (unsigned iL(0); iL<nLayers;++iL){
       std::map<int,int>::iterator lEle = lMapLC.find(iL+1);
       if (lEle !=lMapLC.end()) lc_mult.push_back(lEle->second);

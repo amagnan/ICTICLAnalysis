@@ -12,10 +12,11 @@ EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/
 #EMonlyNew
 #EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/EMonlyNewDef
 #GEOMDIR=D49_Dummy_new/
-GEOMDIR=D49_FineCalo/
-#GEOMDIR=D49_DefSC/
+#GEOMDIR=D49_FineCalo/
+GEOMDIR=D49_DefSC/
 
-DataType=ChargedPionsFromVtx/FineCalo #CloseByPhotons #CloseByPhotonsFromVtxWithPU
+DataType=ChargedPionsFromVtx #CloseByPhotons #CloseByPhotonsFromVtxWithPU
+#DataType=ChargedPionsFromVtx/FineCalo #CloseByPhotons #CloseByPhotonsFromVtxWithPU
 #ElectronsFromVtx #CloseByPhotonsFromVtx #CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
 
 for PT in 50
@@ -82,8 +83,8 @@ do
     done
 done
 
-for d in $DataType
+for d in $(basename $DataType)
 do
     #echo "for PT in 3 5 10 15 20 30 40 50 75 100 150 200; do for eta in 17 19 21 23 25 27; do PTETA=_pt\${PT}_eta\${eta}; rm $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root; hadd $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root $GEOMDIR/$d/step3ticl\${PTETA}_run*_FlatTracksters.root; done; done"
-    echo "for PT in 50; do for eta in 21; do PTETA=_pt\${PT}_eta\${eta}; rm $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root; hadd $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root $GEOMDIR/$d/step3ticl\${PTETA}_run*_FlatTracksters.root; done; done"
+    echo "for PT in 50; do for eta in 21; do PTETA=_pt\${PT}_eta\${eta}; rm $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root; hadd $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root $GEOMDIR/$d/step3ticl\${PTETA}_run*_FlatTracksters.root; ll $GEOMDIR/$d/*; done; done"
 done

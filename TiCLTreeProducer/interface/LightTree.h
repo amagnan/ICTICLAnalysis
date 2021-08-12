@@ -45,11 +45,14 @@ class LightTree {
 
   void fillSCinfo(const std::vector<simcluster> & simclusters);
 
-  void fillTSinfo(const std::vector<ticl::Trackster> & tracksters,
+  void fillTSinfo(const unsigned evtNum,
+		  const std::vector<ticl::Trackster> & tracksters,
 		  const unsigned nLayers,
 		  const std::vector<std::vector<layercluster> > & lcsFromTrkster,
 		  const edm::Handle<reco::CaloClusterCollection> & layerClusterHandle,
-		  const hgcal::RecoToSimCollectionWithSimClusters & recSimColl);
+		  const hgcal::RecoToSimCollectionWithSimClusters & recSimColl,
+		  const std::vector<std::vector<double> > & newSimLCmult
+		  );
 
   
   inline void fillCPEfraction(const double & trksterCPEnDiff,
@@ -74,7 +77,7 @@ class LightTree {
 
   int nTS;
   std::vector<int> ts_CPidx;
-  std::vector<int> ts_SCidx;
+  std::vector<int> ts_seedIdx;
   std::vector<double> ts_energy;
   std::vector<double> ts_emEnergy;
   std::vector<double> ts_regEnergy;
@@ -127,6 +130,7 @@ class LightTree {
   std::vector<double> sc_zAtB;
 
   int nLC;
+  std::vector<int> lc_idx;
   std::vector<int> lc_TSidx;
   std::vector<double> lc_energy;
   std::vector<double> lc_eta;
@@ -140,7 +144,7 @@ class LightTree {
   std::vector<int> lc_algo;
   std::vector<int> lc_layer;
   std::vector<int> lc_nrechits;
-  std::vector<int> lc_tsMult;
+  std::vector<double> lc_tsMult;
   std::vector<int> lc_mult;
   std::vector<int> lc_nSC;
   std::vector<int> lc_pdgid;

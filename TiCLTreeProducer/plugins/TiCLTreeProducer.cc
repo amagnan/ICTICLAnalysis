@@ -549,9 +549,12 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   edm::Handle<std::vector<SimVertex>> simVertices;
   iEvent.getByToken(simVerticesToken_, simVertices);
 
+  const auto& simClustersToRecoColl = iEvent.get(associatorMapSimToRecoToken_);
+
   //edm::Handle<hgcal::SimToRecoCollectionWithSimClusters> simToRecoCollHandle;
   //iEvent.getByToken(associatorMapSimToRecoToken_, simToRecoCollHandle);
   //const hgcal::SimToRecoCollectionWithSimClusters& simToRecoColl = *simToRecoCollHandle;
+  //auto simRecColl = *simToRecoCollHandle;
 
   edm::Handle<hgcal::RecoToSimCollectionWithSimClusters> recoToSimCollHandle;
   iEvent.getByToken(associatorMapRecoToSimToken_, recoToSimCollHandle);
@@ -576,14 +579,22 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
   initialiseLCTreeVariables();
 
+  std::vector<std::vector<double> > newSimLCmult;
+
   // get photon truth info for conversions
   auto mcTruthPhotons = photonMCTruthFinder_.find(*simTracks, *simVertices);
   PhotonMCTruth mcTruthPho;
+
+  irun = iEvent.id().run();
+  ievent = iEvent.id().event();
+  ilumiblock = iEvent.id().luminosityBlock();
 
   // get CaloParticles
   std::vector<caloparticle> caloparticles;
   std::vector<float> convAbsDzs;
   std::vector<simcluster> simclust;
+  newSimLCmult.clear();
+
   int idx = -1;
   for (const auto& it_cp : cps) {
     const CaloParticle& cp = ((it_cp));
@@ -669,6 +680,63 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     caloparticles.push_back(tmpcp_);
     convAbsDzs.push_back( mcTruthExists ? mcTruthPho.vertex().vect().z() : -1. );
     
+    //CAMM
+    //@FIXME Probably to be removed when moving away from CMSSW_11_3_0_pre3!
+    //hack the multiplicity to have proper truth E fraction (not uint8...) -- fixed now in CMSSW master... 
+    
+    for (unsigned iT(0); iT<nIters; ++iT){
+      
+      if (iterTypeVec[iT]!="Sim") continue;
+
+      auto const& tracksters = *(trkstersVec[iT]);
+      //std::map<unsigned,double>checkMult;
+      //std::pair<std::map<unsigned,double>::iterator,bool> checkMultInsert;
+
+      for (unsigned its = 0; its < tracksters.size(); ++its) {
+	const auto& scRef = simclusters[tracksters[its].seedIndex()];
+	const auto& it = simClustersToRecoColl.find(scRef);
+
+	if (it == simClustersToRecoColl.end()){
+	  std::cout << "SimClustToRecoRef Not found ! " << std::endl;
+	  continue;
+	}
+	const auto& lcVec = it->val;
+	if (lcVec.empty()){
+	  std::cout << " LCVec empty ! " << std::endl;
+	  continue;
+	}
+	std::vector<double> newLCmult;
+	std::vector<layercluster> lcsFromTrkster;
+	getLCsFromTrkster(tracksters[its], lcs, lcsFromTrkster,hitMap);
+	std::sort(lcsFromTrkster.begin(), lcsFromTrkster.end(), sortLCsByEnergyAndLayer);
+	for (unsigned ilc(0); ilc<lcsFromTrkster.size(); ++ilc){
+	  //std::cout << "--- ilc " << ilc << " original idx " << tracksters[its].vertices()[ilc] << std::endl;
+	  double fraction = 1.;
+	  for (auto const& [lc, energyScorePair] : lcVec) {
+	    //auto const & [lc, energyScorePair] = lcVec[tracksters[its].vertices()[ilc]];
+	    if (lc.index() != static_cast<unsigned>(lcsFromTrkster[ilc].idxTracksterLC_)) continue;
+	    fraction = energyScorePair.first / lc->energy();
+	    //if (fraction <1) std::cout << " ---- lcVec idx " << lc.index() << " original idx " << tracksters[its].vertices()[ilc] << " E " << lc->energy() << " frac " << fraction << std::endl;
+	    if (fraction > 0) newLCmult.push_back(1. / fraction);
+	    //checkMultInsert = checkMult.insert(std::pair<unsigned,double>(lc.index(),fraction));
+	    //if (!checkMultInsert.second) checkMultInsert.first->second += fraction;
+	  }
+	  //newLCmult.push_back(1. / fraction);
+	}
+	if (newLCmult.size() != lcsFromTrkster.size()) std::cout << " --- size orig " << lcsFromTrkster.size() << " after : " << newLCmult.size() << std::endl;
+	assert(newLCmult.size() == lcsFromTrkster.size());
+	newSimLCmult.push_back(newLCmult);
+      }
+      if (newSimLCmult.size() != tracksters.size()) std::cout << " --- size orig " << tracksters.size() << " after : " << newSimLCmult.size() << std::endl;
+
+      //std::cout << " Check map when filling vector " << std::endl;
+      //std::map<unsigned,double>::iterator checkMultIter = checkMult.begin();
+      //for (;checkMultIter!=checkMult.end();++checkMultIter){
+      //if ((checkMultIter->second) > 1.000001) std::cout << " event " << iEvent.id().event() << " lc " << checkMultIter->first << " sumFrac " << checkMultIter->second << std::endl;
+      //}
+    }//loop over iters
+    
+    
   }  // end of looping over the calo particles
 
   // get the relevant trackster collection
@@ -683,9 +751,6 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   //   std::vector<trackster> trksterCollection; trksterCollection.clear();
 
   //double trackstersEnFromCP = 0.9;
-  irun = iEvent.id().run();
-  ievent = iEvent.id().event();
-  ilumiblock = iEvent.id().luminosityBlock();
   
 
   
@@ -757,8 +822,13 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     lighttreeVec[iT].fillCPinfo(caloparticles, convAbsDzs);
     lighttreeVec[iT].fillSCinfo(simclust);
     
-    auto const& tracksters = *(trkstersVec[iT]);//dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
-    //auto const& tracksters = dummyTrksters;//mergeTrksters;  // if we need a different trackster collection this should go in the loop
+    auto const& tracksters = *(trkstersVec[iT]);
+
+    //std::cout << " Entry " << ievent 
+    //	      << " iteration " << iterTypeVec[iT] 
+    //	      << " SimLCmult size " << newSimLCmult.size() 
+    //	      << " nTS " << tracksters.size()
+    //	      << std::endl;
     
     if (debug) std::cout << " --- Number of tracksters: " << tracksters.size() << std::endl;
 
@@ -795,7 +865,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       if (debug>0) std::cout << " --- Chose index " << itrksterMin_ << " !" << std::endl;
 
     }//loop over CP
-      
+     
       
     std::vector<std::vector<layercluster> > lcsFromTrksters;
     lcsFromTrksters.reserve(tracksters.size());
@@ -806,8 +876,11 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       lcsFromTrksters.push_back(lcsFromTrkster);
     }
     
-    lighttreeVec[iT].fillTSinfo(tracksters,nLayers,lcsFromTrksters,layerClusterHandle,recSimColl);
-      
+    if (iterTypeVec[iT]=="Sim") lighttreeVec[iT].fillTSinfo(ievent,tracksters,nLayers,lcsFromTrksters,layerClusterHandle,recSimColl,newSimLCmult);
+    else {
+      std::vector<std::vector<double> > dummy;
+      lighttreeVec[iT].fillTSinfo(ievent,tracksters,nLayers,lcsFromTrksters,layerClusterHandle,recSimColl,dummy);
+    }
     //if (itrksterMin_>=0 && fillTripletsInfo) fillDoubletsInfo(tracksters[itrksterMin_],lcs,lighttreeVec[iT]);
     
     lighttreeVec[iT].fillOutputTree();
