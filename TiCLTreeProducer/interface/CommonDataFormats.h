@@ -84,6 +84,7 @@ struct layercluster {
   double y_;
   double z_;
   int nrechits_;
+  bool isSi_;
   int layer_;
   int idx2Trackster_;
   int tsMult_;

@@ -46,6 +46,7 @@ class LightTree {
   void fillSCinfo(const std::vector<simcluster> & simclusters);
 
   void fillTSinfo(const unsigned evtNum,
+		  const std::string iterName,
 		  const std::vector<ticl::Trackster> & tracksters,
 		  const unsigned nLayers,
 		  const std::vector<std::vector<layercluster> > & lcsFromTrkster,
@@ -142,6 +143,7 @@ class LightTree {
   std::vector<double> lc_y;
   std::vector<double> lc_z;
   std::vector<int> lc_algo;
+  std::vector<int> lc_isSi;
   std::vector<int> lc_layer;
   std::vector<int> lc_nrechits;
   std::vector<double> lc_tsMult;

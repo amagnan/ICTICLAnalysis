@@ -12,11 +12,11 @@ EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/
 #EMonlyNew
 #EOSDIRIN=/eos/cms/store/user/amagnan/HGCAL/TiCL/EMonlyNewDef
 #GEOMDIR=D49_Dummy_new/
-#GEOMDIR=D49_FineCalo/
-GEOMDIR=D49_DefSC/
+GEOMDIR=D49_FineCalo/
+#GEOMDIR=D49_DefSC/
 
-DataType=ChargedPionsFromVtx #CloseByPhotons #CloseByPhotonsFromVtxWithPU
-#DataType=ChargedPionsFromVtx/FineCalo #CloseByPhotons #CloseByPhotonsFromVtxWithPU
+#DataType=ChargedPionsFromVtx #CloseByPhotons #CloseByPhotonsFromVtxWithPU
+DataType=ChargedPionsFromVtxWithPU/FineCalo #CloseByPhotons #CloseByPhotonsFromVtxWithPU
 #ElectronsFromVtx #CloseByPhotonsFromVtx #CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
 
 for PT in 50
@@ -47,9 +47,9 @@ do
 	    # Establish output directory based on sample name.
 	    # Check if it exists, create if not.
 	    OUT_DIR=$(basename $d)
-	    if [ ! -e ${GEOMDIR}/$OUT_DIR ]; then
-		echo "Creating directory ${GEOMDIR}/$OUT_DIR"
-		mkdir -p ${GEOMDIR}/${OUT_DIR}
+	    if [ ! -e ${GEOMDIR}/$d ]; then
+		echo "Creating directory ${GEOMDIR}/$d"
+		mkdir -p ${GEOMDIR}/${d}
 	    fi
 	    
 	    # Gather all files to process and save them in local ASCII file.
@@ -71,19 +71,19 @@ do
 		    echo -n "."
 		done
 		#IN_FILES=`awk 'BEGIN{ORS=","}{print "file:"$1}' files_${OUT_DIR}.txt`
-		OUT_FILE=${GEOMDIR}/${OUT_DIR}/$(basename $f .root)
+		OUT_FILE=${GEOMDIR}/${d}/$(basename $f .root)
 		#${x%?} strips out last character... 
 		#echo "cmsRun run_pid_cfg.py inputFiles=${IN_FILES%?} outputFile=${OUT_FILE}${OUT_SUFFIX}.root | tee ${OUT_FILE}.log"
 		echo "cmsRun run_tree_cfg.py fillTriplets=${fillTriplets} inputFiles=file:$f outputFile=${OUT_FILE}${OUT_SUFFIX}.root | tee ${OUT_FILE}.log"
 		cmsRun run_tree_cfg.py fillTriplets=${fillTriplets} inputFiles=file:$f outputFile=${OUT_FILE}${OUT_SUFFIX}.root &> ${OUT_FILE}.log &
-		#echo "rm ${GEOMDIR}/${OUT_DIR}/step3ticl${PTETA}${OUT_SUFFIX}.root; hadd ${GEOMDIR}/${OUT_DIR}/step3ticl${PTETA}${OUT_SUFFIX}.root ${GEOMDIR}/${OUT_DIR}/step3ticl${PTETA}*${OUT_SUFFIX}.root"
+		#echo "rm ${GEOMDIR}/${d}/step3ticl${PTETA}${OUT_SUFFIX}.root; hadd ${GEOMDIR}/${d}/step3ticl${PTETA}${OUT_SUFFIX}.root ${GEOMDIR}/${d}/step3ticl${PTETA}*${OUT_SUFFIX}.root"
 	  
 	    done
 	done
     done
 done
 
-for d in $(basename $DataType)
+for d in $DataType
 do
     #echo "for PT in 3 5 10 15 20 30 40 50 75 100 150 200; do for eta in 17 19 21 23 25 27; do PTETA=_pt\${PT}_eta\${eta}; rm $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root; hadd $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root $GEOMDIR/$d/step3ticl\${PTETA}_run*_FlatTracksters.root; done; done"
     echo "for PT in 50; do for eta in 21; do PTETA=_pt\${PT}_eta\${eta}; rm $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root; hadd $GEOMDIR/$d/step3ticl\${PTETA}_FlatTracksters.root $GEOMDIR/$d/step3ticl\${PTETA}_run*_FlatTracksters.root; ll $GEOMDIR/$d/*; done; done"
