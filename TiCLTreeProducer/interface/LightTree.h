@@ -41,7 +41,15 @@ class LightTree {
   void fillTriplets(const std::vector< std::vector<Triplet> > & aTripletVec);
   
   
-  void fillCPinfo(const std::vector<caloparticle> & caloparticles, const std::vector<float> dzs);
+  void fillCPinfo(const std::vector<caloparticle> & caloparticles, 
+		  const std::vector<float> dzs,
+		  const std::vector<float> cpVtxX,
+		  const std::vector<float> cpVtxY,
+		  const std::vector<float> cpVtxZ);
+
+  void fillSVinfo(const std::vector<float>& svPosX,
+		  const std::vector<float>& svPosY,
+		  const std::vector<float>& svPosZ);
 
   void fillSCinfo(const std::vector<simcluster> & simclusters);
 
@@ -114,6 +122,14 @@ class LightTree {
   std::vector<double> cp_eta;
   std::vector<double> cp_phi;
   std::vector<double> cp_convAbsDz;
+  std::vector<double> cp_vtxX;
+  std::vector<double> cp_vtxY;
+  std::vector<double> cp_vtxZ;
+
+  int nSV;
+  std::vector<double> sv_posX;
+  std::vector<double> sv_posY;
+  std::vector<double> sv_posZ;
 
   int nSC;
   std::vector<int> sc_CPidx;

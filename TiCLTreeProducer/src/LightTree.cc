@@ -99,8 +99,16 @@ void LightTree::makeTree(edm::Service<TFileService> & aFile,
   outputTree->Branch("cp_eta", &cp_eta);
   outputTree->Branch("cp_phi", &cp_phi);
   outputTree->Branch("cp_convAbsDz", &cp_convAbsDz);
+  outputTree->Branch("cp_vtxX", &cp_vtxX);
+  outputTree->Branch("cp_vtxY", &cp_vtxY);
+  outputTree->Branch("cp_vtxZ", &cp_vtxZ);
   outputTree->Branch("cp_pdgid", &cp_pdgid);
-  
+
+  outputTree->Branch("nSV", &nSV, "nSV/I");
+  outputTree->Branch("sv_posX", &sv_posX);
+  outputTree->Branch("sv_posY", &sv_posY);
+  outputTree->Branch("sv_posZ", &sv_posZ);
+
   outputTree->Branch("nSC", &nSC, "nSC/I");
   outputTree->Branch("sc_CPidx", &sc_CPidx);
   outputTree->Branch("sc_energy", &sc_energy);
@@ -243,6 +251,14 @@ void LightTree::initialiseTreeVariables(const size_t irun,
   cp_eta.clear();
   cp_phi.clear();
   cp_convAbsDz.clear();
+  cp_vtxX.clear();
+  cp_vtxY.clear();
+  cp_vtxZ.clear();
+
+  nSV = 0;
+  sv_posX.clear();
+  sv_posY.clear();
+  sv_posZ.clear();
 
   nSC = 0;
   sc_CPidx.clear();
@@ -355,7 +371,11 @@ void LightTree::fillTriplets(const std::vector< std::vector<Triplet> > & aTriple
 }
 
 
-void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles, const std::vector<float> dzs){
+void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles,
+			   const std::vector<float> dzs,
+			   const std::vector<float> cpVtxX,
+			   const std::vector<float> cpVtxY,
+			   const std::vector<float> cpVtxZ){
   nCP = caloparticles.size();
   for (int icp = 0; icp < nCP; ++icp) {
     cp_nSC.push_back(caloparticles[icp].nSC_);
@@ -364,8 +384,22 @@ void LightTree::fillCPinfo(const std::vector<caloparticle> & caloparticles, cons
     cp_eta.push_back(caloparticles[icp].eta_);
     cp_phi.push_back(caloparticles[icp].phi_);
     cp_convAbsDz.push_back(dzs[icp]);
+    cp_vtxX.push_back(cpVtxX[icp]);
+    cp_vtxY.push_back(cpVtxY[icp]);
+    cp_vtxZ.push_back(cpVtxZ[icp]);
     cp_pdgid.push_back(caloparticles[icp].pdgid_);
     cp_missingEnergyFraction.push_back(0);
+  }
+}
+
+void LightTree::fillSVinfo(const std::vector<float>& svPosX,
+			   const std::vector<float>& svPosY,
+			   const std::vector<float>& svPosZ){
+  nSV = svPosX.size();
+  for (int idx = 0; idx < nSV; ++idx) {
+    sv_posX.push_back(svPosX[idx]);
+    sv_posY.push_back(svPosY[idx]);
+    sv_posZ.push_back(svPosZ[idx]);
   }
 }
 
@@ -447,7 +481,7 @@ void LightTree::fillTSinfo(const unsigned evtNum,
     ts_BCz.push_back(tracksters[its].barycenter().z());
     ts_eta_PCA.push_back(tracksters[its].eigenvectors()[0].eta());
     ts_phi_PCA.push_back(tracksters[its].eigenvectors()[0].phi());
-    ts_outInHopsPerformed.push_back(tracksters[its].outInHopsPerformed());
+    //ts_outInHopsPerformed.push_back(tracksters[its].outInHopsPerformed());
     ts_photon_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::photon));
     ts_ele_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::electron));
     ts_mu_proba.push_back(tracksters[its].id_probability(ticl::Trackster::ParticleType::muon));
