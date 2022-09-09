@@ -55,12 +55,20 @@
 #include "Validation/HGCalValidation/interface/HGVHistoProducerAlgo.h"
 
 #include "DataFormats/Math/interface/LorentzVector.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
 
 #include "DataFormats/HGCalReco/interface/Trackster.h"
 
 //ROOT includes
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
+#include "ROOT/RDataFrame.hxx"
+#include "ROOT/RVec.hxx"
+
+#include "Math/Vector4D.h"
+
+using namespace ROOT::VecOps;
+using simVertexRVec = ROOT::VecOps::RVec<SimVertex>;
 
 #include <string>
 #include <vector>
@@ -118,7 +126,7 @@ private:
 		    std::vector<layercluster> & aLCvec,
 		    const reco::BasicCluster& aLC,
 		    const unsigned & aIdx,
-		    const int & tsMult,
+		    const double & tsMult,
 		    const std::map<DetId, const HGCRecHit*>& hitMap);
   void getLCs(const reco::CaloClusterCollection& lcs, 
 	      std::vector<layercluster> & out,
@@ -360,7 +368,7 @@ void TiCLTreeProducer::fillLCvector(const std::string & iterName,
 				    std::vector<layercluster> & aLCvec,
 				    const reco::BasicCluster& aLC,
 				    const unsigned & aIdx,
-				    const int & tsMult,
+				    const double & tsMult,
 				    const std::map<DetId, const HGCRecHit*>& hitMap){
   auto const& hf = aLC.hitsAndFractions();
   
@@ -615,6 +623,22 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     sv_posZ.push_back( sv.position().z() );
   }
   
+  const simVertexRVec & v = *simVertices;
+
+  auto distanceV = v[0].position()-v[1].position();
+  float distance = ceilf(distanceV.P() * 100)/100;
+  float sv12_posX = (sv_posX)[0] - (sv_posX)[1];
+  float sv12_posY = (sv_posY)[0] - (sv_posY)[1];
+  float sv12_posZ = (sv_posZ)[0] - (sv_posZ)[1];
+  float dist_2d = std::sqrt( sv12_posX*sv12_posX + sv12_posY*sv12_posY );
+  float dist_3d = std::sqrt( dist_2d* dist_2d + sv12_posZ*sv12_posZ );
+
+  if (fabs(distance-dist_3d) > 0.01) std::cout << " Marco " << distance 
+					       << " Rob " << dist_2d 
+					       << " " << dist_3d 
+					       << std::endl;
+
+
   // get CaloParticles
   std::vector<caloparticle> caloparticles;
   std::vector<float> convAbsDzs;

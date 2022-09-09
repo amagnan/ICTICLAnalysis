@@ -556,6 +556,11 @@ void LightTree::fillTSinfo(const unsigned evtNum,
       else {
 	if (lcNum==0 && its==0 && newSimLCmult.size()>0) std::cout << " Event " << evtNum << " Wrong size of newSim vector ! new " <<  newSimLCmult.size() << " orig " << tracksters.size() << std::endl;
 	lc_tsMult.push_back(lc.tsMult_);
+	//CAMM something not right with Sim tracksters due to rounding....
+	//if (iterName.find("Sim")!=iterName.npos){
+	//if (lc.tsMult_ > 0.01) checkTSenergy+=lc.energy_/lc.tsMult_; 
+	//}
+	//else 
 	checkTSenergy+=lc.energy_/lc.tsMult_;
       }
 
@@ -618,7 +623,7 @@ void LightTree::fillTSinfo(const unsigned evtNum,
     ts_lastLayer.push_back(lastLay);
 
     if (fabs(checkTSenergy-tracksters[its].raw_energy())>0.001){
-      if (iterName != "Sim" || evtNum==1) {
+      if (iterName.find("Sim")==iterName.npos || evtNum==1) {
 	std::cout << " -- Inconsistent total energy ! Event " << evtNum
 		  << " iter " << iterName << " Sum LC = " 
 		  << checkTSenergy << " TS energy = "
