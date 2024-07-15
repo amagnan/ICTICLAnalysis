@@ -28,11 +28,11 @@ options.register('debug',
 
 options.parseArguments()
 
-process = cms.Process("ticlTree")
+from Configuration.Eras.Era_Phase2C17I13M9_cff import Phase2C17I13M9
 
-from Configuration.Eras.Era_Phase2C9_cff import Phase2C9
-process = cms.Process('PROD',Phase2C9)
-process.load('Configuration.Geometry.GeometryExtended2026D49Reco_cff')
+process = cms.Process("ticlTree",Phase2C17I13M9)
+
+process.load('Configuration.Geometry.GeometryExtended2026D98Reco_cff')
 
 process.load("SimGeneral.HepPDTESSource.pythiapdt_cfi")
 process.load('Configuration.StandardSequences.MagneticField_cff')
@@ -42,7 +42,7 @@ process.load('FWCore.MessageService.MessageLogger_cfi')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic_T25', '')
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 50
 
@@ -71,53 +71,35 @@ process.sim_task = cms.Task(
 process.load("ICTICLAnalysis.TiCLTreeProducer.TiCLTreeProducer_cfi")
 process.ticlTree.FillTripletsInfo = cms.int32(options.fillTriplets)
 process.ticlTree.Debug = cms.int32(options.debug)
-process.ticlTree.trksterVec          = cms.VInputTag(
-    #cms.InputTag("ticlTrackstersDummy1"    , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersDummy2"    , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersDummy3"    , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersEM1"       , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersEM2"       , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersEM3"       , ""                 , "TICL" ),
-#    cms.InputTag("ticlTrackstersEM3a"      , ""                 , "TICL" ),
-#    cms.InputTag("ticlTrackstersEM3b"      , ""                 , "TICL" ),
-#    cms.InputTag("ticlTrackstersEM3c"      , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersHAD1"      , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersHAD2"      , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersHAD3"      , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersTRK1"      , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersTRK2"      , ""                 , "TICL" ),
-    #cms.InputTag("ticlTrackstersTRK3"      , ""                 , "TICL" ),
+
+process.load("ICTICLAnalysis.TiCLTreeProducer.CellAreaChecker_cfi")
+process.areaCheck.Debug = cms.int32(options.debug)
+
+#process.ticlTree.trksterVec          = cms.VInputTag(
     #cms.InputTag("ticlTrackstersTrk"       , ""                 , "TICL" ),
     #cms.InputTag("ticlTrackstersHAD"       , ""                 , "TICL" ),
     #cms.InputTag("ticlSimTracksters"       , ""                 , "TICL" )
-    cms.InputTag("ticlSimTracksters", "fromCPs", "TICL"),
+#    cms.InputTag("ticlSimTracksters", "fromCPs", "TICL"),
     # ORIG
-    cms.InputTag("ticlTrackstersTrkEM"     , ""                 , "RECO" ),
-    cms.InputTag("ticlTrackstersEM"        , ""                 , "RECO" ),
+#    cms.InputTag("ticlTrackstersTrkEM"     , ""                 , "RECO" ),
+#    cms.InputTag("ticlTrackstersEM"        , ""                 , "RECO" ),
     #RERECO
-    cms.InputTag("ticlTrackstersEM3"       , ""                 , "TICL" ),
-    cms.InputTag("ticlTrackstersCLUE3D3"   , ""                 , "TICL" ),
+#    cms.InputTag("ticlTrackstersEM3"       , ""                 , "TICL" ),
+#    cms.InputTag("ticlTrackstersCLUE3D3"   , ""                 , "TICL" ),
     
 #
-)
-process.ticlTree.iterTypeVec = cms.vstring(
-    #"Dummy1","Dummy2",
-    #"Dummy3",
-    #"EM1","EM2",
-    #"EM3",
- #   "EM3a","EM3b","EM3c",
-    #"HAD1","HAD2",
-    #"HAD3",
-    #"TRK1","TRK2",
-    #"TRK3",
-    "SimFromCP",
-    "TrkEM","EM",
-    "EM3","CLUE3D3" #@@ TICL !!
-)
+#)
+#process.ticlTree.iterTypeVec = cms.vstring(
+ #    "SimFromCP",
+ #   "TrkEM","EM",
+ #   "EM3","CLUE3D3" #@@ TICL !!
+#)
 
 #process.pid.trksterVec = cms.VInputTag(options.inputTracksters)
 process.ticl_seq = cms.Sequence(
     process.sim_task
 )
 
+#process.p = cms.Path(process.ticl_seq*process.ticlTree*process.areaCheck)
 process.p = cms.Path(process.ticl_seq*process.ticlTree)
+#process.p = cms.Path(process.ticl_seq*process.areaCheck)

@@ -67,8 +67,8 @@
 
 #include "Math/Vector4D.h"
 
-using namespace ROOT::VecOps;
-using simVertexRVec = ROOT::VecOps::RVec<SimVertex>;
+//using namespace ROOT::VecOps;
+//using simVertexRVec = ROOT::VecOps::RVec<SimVertex>;
 
 #include <string>
 #include <vector>
@@ -87,7 +87,11 @@ bool sortLCsByEnergyAndLayer(const layercluster& a, const layercluster& b) {
   return (a.energy_ > b.energy_) || ((a.energy_ == b.energy_) && (a.layer_ < b.layer_));
 }
 bool sortLCsByLayerAndEnergy(const layercluster& a, const layercluster& b) {
-  return (a.layer_ < b.layer_) || ((a.layer_ == b.layer_) && (a.energy_ > b.energy_));
+  return (a.type_ == b.type_) &&
+    (
+     (a.layer_ < b.layer_) ||
+     ((a.layer_ == b.layer_) && (a.energy_ > b.energy_))
+     );
 }
 
 double cosTheta(const ROOT::Math::XYZVector & AC,
@@ -127,10 +131,12 @@ private:
 		    const reco::BasicCluster& aLC,
 		    const unsigned & aIdx,
 		    const double & tsMult,
-		    const std::map<DetId, const HGCRecHit*>& hitMap);
+		    const std::map<DetId, const HGCRecHit*>& hitMap,
+		    const int aType);
   void getLCs(const reco::CaloClusterCollection& lcs, 
 	      std::vector<layercluster> & out,
-	      const std::map<DetId, const HGCRecHit*>& hitMap);
+	      const std::map<DetId, const HGCRecHit*>& hitMap,
+	      const int aType);
   void getLCsFromTrkster(const std::string & iterName,
 			 const ticl::Trackster& trkster, 
 			 const reco::CaloClusterCollection& lcs, 
@@ -166,6 +172,8 @@ private:
 
   edm::EDGetTokenT<reco::CaloClusterCollection> hgcalLayerClustersToken_;
   edm::EDGetTokenT<edm::ValueMap<std::pair<float, float> > > hgcalLayerClusterTimeToken_;
+  edm::EDGetTokenT<reco::CaloClusterCollection> hgcalLayerClustersNEWToken_;
+  edm::EDGetTokenT<edm::ValueMap<std::pair<float, float> > > hgcalLayerClusterTimeNEWToken_;
 
   PhotonMCTruthFinder photonMCTruthFinder_;
 
@@ -187,18 +195,29 @@ private:
   TTree *treeAllLC;
 
   int nAllLC;
+  std::vector<int> all_lc_type;
   std::vector<double> all_lc_energy;
   std::vector<double> all_lc_eta;
   std::vector<double> all_lc_phi;
   std::vector<double> all_lc_seedEnergy;
+  std::vector<double> all_lc_seedArea;
+  std::vector<double> all_lc_seedx;
+  std::vector<double> all_lc_seedy;
+  std::vector<double> all_lc_seedu;
+  std::vector<double> all_lc_seedv;
+  std::vector<double> all_lc_eminRH;
+  std::vector<double> all_lc_areaminRH;
   std::vector<double> all_lc_seedEta;
   std::vector<double> all_lc_seedPhi;
   std::vector<double> all_lc_x;
   std::vector<double> all_lc_y;
   std::vector<double> all_lc_z;
+  std::vector<int> all_lc_isHD;
   std::vector<int> all_lc_isSi;
   std::vector<int> all_lc_layer;
   std::vector<int> all_lc_nrechits;
+  std::vector<int> all_lc_nrechitsHD;
+  std::vector<double> all_lc_efracHD;
   std::vector<int> all_lc_mult;
 
 };
@@ -224,6 +243,8 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   associatorMapRecoToSimToken_(consumes<hgcal::RecoToSimCollectionWithSimClusters>(associatorLayerClusterSimCluster_)),
   hgcalLayerClustersToken_(consumes<reco::CaloClusterCollection>(iConfig.getParameter<edm::InputTag>("hgcalLayerClusters"))),
   hgcalLayerClusterTimeToken_(consumes<edm::ValueMap<std::pair<float, float>>>(iConfig.getParameter<edm::InputTag>("layerClusterTime"))),
+  hgcalLayerClustersNEWToken_(consumes<reco::CaloClusterCollection>(iConfig.getParameter<edm::InputTag>("hgcalLayerClustersNEW"))),
+  hgcalLayerClusterTimeNEWToken_(consumes<edm::ValueMap<std::pair<float, float>>>(iConfig.getParameter<edm::InputTag>("layerClusterTimeNEW"))),
   photonMCTruthFinder_()
   {
 
@@ -249,15 +270,26 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   treeAllLC = file->make<TTree>("treeLC", "treeAllLC");
 
   treeAllLC->Branch("nAllLC", &nAllLC, "nAllLC/I");
+  treeAllLC->Branch("all_lc_type", &all_lc_type);
   treeAllLC->Branch("all_lc_energy", &all_lc_energy);
   treeAllLC->Branch("all_lc_eta", &all_lc_eta);
   treeAllLC->Branch("all_lc_phi", &all_lc_phi);
   treeAllLC->Branch("all_lc_seedEnergy", &all_lc_seedEnergy);
+  treeAllLC->Branch("all_lc_seedArea", &all_lc_seedArea);
+  treeAllLC->Branch("all_lc_seedx", &all_lc_seedx);
+  treeAllLC->Branch("all_lc_seedy", &all_lc_seedy);
+  treeAllLC->Branch("all_lc_seedu", &all_lc_seedu);
+  treeAllLC->Branch("all_lc_seedv", &all_lc_seedv);
+  treeAllLC->Branch("all_lc_eminRH", &all_lc_eminRH);
+  treeAllLC->Branch("all_lc_areaminRH", &all_lc_areaminRH);
   treeAllLC->Branch("all_lc_seedEta", &all_lc_seedEta);
   treeAllLC->Branch("all_lc_seedPhi", &all_lc_seedPhi);
   treeAllLC->Branch("all_lc_isSi", &all_lc_isSi);
+  treeAllLC->Branch("all_lc_isHD", &all_lc_isHD);
   treeAllLC->Branch("all_lc_layer", &all_lc_layer);
   treeAllLC->Branch("all_lc_nrechits", &all_lc_nrechits);
+  treeAllLC->Branch("all_lc_nrechitsHD", &all_lc_nrechitsHD);
+  treeAllLC->Branch("all_lc_efracHD", &all_lc_efracHD);
   treeAllLC->Branch("all_lc_mult", &all_lc_mult);
   treeAllLC->Branch("all_lc_x", &all_lc_x);
   treeAllLC->Branch("all_lc_y", &all_lc_y);
@@ -339,11 +371,12 @@ double TiCLTreeProducer::getTrksterEnFromCP(const ticl::Trackster& trkster,
 
 void TiCLTreeProducer::getLCs(const reco::CaloClusterCollection& lcs,
 			      std::vector<layercluster> & layerclusters,
-			      const std::map<DetId, const HGCRecHit*>& hitMap) {
+			      const std::map<DetId, const HGCRecHit*>& hitMap,
+			      const int aType) {
   
   for (unsigned int ilc = 0; ilc < lcs.size(); ++ilc) {
     const reco::BasicCluster& lc = lcs.at(ilc);
-    fillLCvector("AllLC",layerclusters,lc,ilc,-2,hitMap);
+    fillLCvector("AllLC",layerclusters,lc,ilc,-2,hitMap,aType);
   }
 
 }  // end of getLCs
@@ -358,7 +391,8 @@ void TiCLTreeProducer::getLCsFromTrkster(const std::string & iterName,
 
   for (unsigned int ilc = 0; ilc < lcIdxs.size(); ++ilc) {
     const reco::BasicCluster& lc = lcs.at(lcIdxs[ilc]);
-    fillLCvector(iterName,layerclusters,lc,lcIdxs[ilc],trkster.vertex_multiplicity(ilc),hitMap);
+    int lType = (iterName.find("NEWLC")==iterName.npos) ? 0 : 1;
+    fillLCvector(iterName,layerclusters,lc,lcIdxs[ilc],trkster.vertex_multiplicity(ilc),hitMap,lType);
   }
 
 }  // end of getLCsFromTrkster
@@ -369,15 +403,41 @@ void TiCLTreeProducer::fillLCvector(const std::string & iterName,
 				    const reco::BasicCluster& aLC,
 				    const unsigned & aIdx,
 				    const double & tsMult,
-				    const std::map<DetId, const HGCRecHit*>& hitMap){
+				    const std::map<DetId, const HGCRecHit*>& hitMap,
+				    const int aType){
   auto const& hf = aLC.hitsAndFractions();
   
   int layer_ = 0;
+  double EminRH = 1.1*aLC.energy();
+  double areaMinRH = 0;
+  double echeck = 0;
+  int nRHHD = 0;
+  double eHD = 0;
+
   for (unsigned int j = 0; j < hf.size(); j++) {
     const DetId detid_ = hf[j].first;
     layer_ = recHitTools->getLayerWithOffset(detid_);
-    break;
+    auto const hitcheck = hitMap.find(detid_);
+    if (hitcheck != hitMap.end()) {
+      const HGCRecHit* hit = hitcheck->second;
+      double hitE = hit->energy()*hf[j].second;
+      echeck += hitE;
+      if (hitE < EminRH){
+	EminRH = hitE;
+	areaMinRH = recHitTools->getCellArea(detid_);
+      }
+
+      bool ishd = recHitTools->isSilicon(detid_)?HGCSiliconDetId(detid_).highDensity():false;
+      if (ishd) {
+	nRHHD++;
+	eHD += hitE;
+      }
+    }
+    //break;
   }
+
+  if (abs(echeck-aLC.energy())>0.001) std::cout << " -- Sum of fractions not 1?? SumEfrac = " << echeck << " LC Etot " << aLC.energy() << std::endl;
+  
   //for (unsigned int j = 0; j < hf.size(); j++) {
   //std::cout << aLC.printHitAndFraction(j) << std::endl;
   //}
@@ -387,12 +447,24 @@ void TiCLTreeProducer::fillLCvector(const std::string & iterName,
   layercluster_.energy_ = aLC.energy();///(double)trkster.vertex_multiplicity(ilc);
   layercluster_.eta_ = aLC.eta();
   layercluster_.phi_ = aLC.phi();
+  layercluster_.type_ = aType;
+  layercluster_.eminRH_ = EminRH;
+  layercluster_.areaminRH_ = areaMinRH;
+  layercluster_.nrechitsHD_ = nRHHD;
+  layercluster_.efracHD_ = eHD/layercluster_.energy_;
 
   //get seed information
   auto const itcheck = hitMap.find(aLC.seed());
   if (itcheck != hitMap.end()) {
     const HGCRecHit* hit = itcheck->second;
+    bool isSi = recHitTools->getLayerWithOffset(itcheck->first) < recHitTools->firstLayerBH();
+
     layercluster_.seedEnergy_ = hit->energy();///(double)trkster.vertex_multiplicity(ilc);
+    layercluster_.seedArea_ = recHitTools->getCellArea(itcheck->first);
+    layercluster_.seedx_ = recHitTools->getPosition(itcheck->first).x();
+    layercluster_.seedy_ = recHitTools->getPosition(itcheck->first).y();
+    layercluster_.seedu_ = isSi ? recHitTools->getCell(itcheck->first).first : -1;
+    layercluster_.seedv_ = isSi ? recHitTools->getCell(itcheck->first).second : -1;
   }
   //get position wrt (0,0,0)
   layercluster_.seedEta_ = recHitTools->getEta(aLC.seed());
@@ -408,11 +480,14 @@ void TiCLTreeProducer::fillLCvector(const std::string & iterName,
   layercluster_.y_ = aLC.position().y();
   layercluster_.z_ = aLC.position().z();
   layercluster_.nrechits_ = aLC.hitsAndFractions().size();
+
   //if (iterName == "Trk" && layercluster_.nrechits_<3 && abs(layer_) < recHitTools->firstLayerBH()){
   //std::cout << " -- Arf, " << iterName << " nRH = " << layercluster_.nrechits_ << std::endl;
   //}
 
   layercluster_.isSi_ = abs(layer_) < recHitTools->firstLayerBH();
+  if (layercluster_.isSi_) layercluster_.isHD_ = HGCSiliconDetId(aLC.seed()).highDensity();
+  else layercluster_.isHD_ = -1;
   layercluster_.layer_ = abs(layer_);
   layercluster_.idxTracksterLC_ = aIdx;
 }
@@ -420,15 +495,26 @@ void TiCLTreeProducer::fillLCvector(const std::string & iterName,
 void TiCLTreeProducer::initialiseLCTreeVariables(){
 
   nAllLC = 0;
+  all_lc_type.clear();
   all_lc_energy.clear();
   all_lc_eta.clear();
   all_lc_phi.clear();
   all_lc_seedEnergy.clear();
+  all_lc_seedArea.clear();
+  all_lc_seedx.clear();
+  all_lc_seedy.clear();
+  all_lc_seedu.clear();
+  all_lc_seedv.clear();
+  all_lc_eminRH.clear();
+  all_lc_areaminRH.clear();
   all_lc_seedEta.clear();
   all_lc_seedPhi.clear();
   all_lc_layer.clear();
   all_lc_isSi.clear();
+  all_lc_isHD.clear();
   all_lc_nrechits.clear();
+  all_lc_nrechitsHD.clear();
+  all_lc_efracHD.clear();
   all_lc_mult.clear();
   all_lc_x.clear();
   all_lc_y.clear();
@@ -585,9 +671,13 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   //const hgcal::RecoToSimCollectionWithSimClusters& recoToSimColl = *recoToSimCollHandle;
   auto recSimColl = *recoToSimCollHandle; 
 
-  edm::Handle<reco::CaloClusterCollection> layerClusterHandle;
-  iEvent.getByToken(hgcalLayerClustersToken_, layerClusterHandle);
-  const reco::CaloClusterCollection& lcs = *layerClusterHandle;
+  edm::Handle<reco::CaloClusterCollection> layerClusterOLDHandle;
+  iEvent.getByToken(hgcalLayerClustersToken_, layerClusterOLDHandle);
+  const reco::CaloClusterCollection& lcsold = *layerClusterOLDHandle;
+
+  edm::Handle<reco::CaloClusterCollection> layerClusterNEWHandle;
+  iEvent.getByToken(hgcalLayerClustersNEWToken_, layerClusterNEWHandle);
+  const reco::CaloClusterCollection& lcsnew = *layerClusterNEWHandle;
 
   std::map<DetId, const HGCRecHit*> hitMap;
   fillHitMap(hitMap, *recHitHandleEE, *recHitHandleFH, *recHitHandleBH);
@@ -623,7 +713,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     sv_posZ.push_back( sv.position().z() );
   }
   
-  const simVertexRVec & v = *simVertices;
+  /*const simVertexRVec & v = *simVertices;
 
   auto distanceV = v[0].position()-v[1].position();
   float distance = ceilf(distanceV.P() * 100)/100;
@@ -637,7 +727,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 					       << " Rob " << dist_2d 
 					       << " " << dist_3d 
 					       << std::endl;
-
+  */
 
   // get CaloParticles
   std::vector<caloparticle> caloparticles;
@@ -648,6 +738,8 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   std::vector<simcluster> simclust;
 //@@  newSimLCmult.clear();
 
+  if (debug) std::cout << " n Caloparticles" << cps.size() << std::endl;
+  
   int idx = -1;
   for (const auto& it_cp : cps) {
     const CaloParticle& cp = ((it_cp));
@@ -684,7 +776,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     const SimClusterRefVector& simclusters = cp.simClusters();
     tmpcp_.nSC_ = simclusters.size();
 
-    if (debug) std::cout << tmpcp_.print() << std::endl;
+    if (debug) std::cout << "CP particle: " << tmpcp_.print() << std::endl;
 
     for (const auto& it_simc : simclusters) {
       const SimCluster& simc = (*(it_simc));
@@ -795,6 +887,10 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     
   }  // end of looping over the calo particles
 
+
+  if (debug) std::cout << "number of selected caloparticles: " <<     caloparticles.size() << std::endl;
+  if (caloparticles.size()==0) return;
+  
   // get the relevant trackster collection
   // LG: For now always use the MergedTrackster
   //   int cp_pdgid_ = 0; if (caloparticles.size()>0) { cp_pdgid_ = caloparticles.at(0).pdgid_; }
@@ -811,62 +907,101 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
   
 
+  all_lc_type.clear();
   all_lc_energy.clear();
   all_lc_eta.clear();
   all_lc_phi.clear();
   all_lc_seedEnergy.clear();
+  all_lc_seedArea.clear();
+  all_lc_seedx.clear();
+  all_lc_seedy.clear();
+  all_lc_seedu.clear();
+  all_lc_seedv.clear();
+  all_lc_eminRH.clear();
+  all_lc_areaminRH.clear();
   all_lc_seedEta.clear();
   all_lc_seedPhi.clear();
   all_lc_x.clear();
   all_lc_y.clear();
   all_lc_z.clear();
   all_lc_isSi.clear();
+  all_lc_isHD.clear();
   all_lc_layer.clear();
   all_lc_nrechits.clear();
+  all_lc_nrechitsHD.clear();
+  all_lc_efracHD.clear();
   all_lc_mult.clear();
 
   std::vector<layercluster> alllcs;
-  getLCs(lcs,alllcs,hitMap);
+  //RECO collection
+  getLCs(lcsold,alllcs,hitMap,0);
+  //TICL collection after modification of LC algo adding density.
+  getLCs(lcsnew,alllcs,hitMap,1);
   std::sort(alllcs.begin(), alllcs.end(), sortLCsByLayerAndEnergy);
-  
-  std::map<int,int>lMapLC;
+
+  //one map for each type of LC
+  std::map<int,int>lMapLC[2];
   nAllLC = alllcs.size();
+  all_lc_type.reserve(nAllLC);
   all_lc_energy.reserve(nAllLC);
   all_lc_eta.reserve(nAllLC);
   all_lc_phi.reserve(nAllLC);
   all_lc_seedEnergy.reserve(nAllLC);
+  all_lc_seedArea.reserve(nAllLC);
+  all_lc_seedx.reserve(nAllLC);
+  all_lc_seedy.reserve(nAllLC);
+  all_lc_seedu.reserve(nAllLC);
+  all_lc_seedv.reserve(nAllLC);
+  all_lc_eminRH.reserve(nAllLC);
+  all_lc_areaminRH.reserve(nAllLC);
   all_lc_seedEta.reserve(nAllLC);
   all_lc_seedPhi.reserve(nAllLC);
   all_lc_x.reserve(nAllLC);
   all_lc_y.reserve(nAllLC);
   all_lc_z.reserve(nAllLC);
   all_lc_isSi.reserve(nAllLC);
+  all_lc_isHD.reserve(nAllLC);
   all_lc_layer.reserve(nAllLC);
   all_lc_nrechits.reserve(nAllLC);
+  all_lc_nrechitsHD.reserve(nAllLC);
+  all_lc_efracHD.reserve(nAllLC);
   all_lc_mult.reserve(nLayers);
   
   for (auto const& lc : alllcs) {
+    all_lc_type.push_back(lc.type_);
     all_lc_energy.push_back(lc.energy_);
     all_lc_eta.push_back(lc.eta_);
     all_lc_phi.push_back(lc.phi_);
     all_lc_seedEnergy.push_back(lc.seedEnergy_);
+    all_lc_seedArea.push_back(lc.seedArea_);
+    all_lc_seedx.push_back(lc.seedx_);
+    all_lc_seedy.push_back(lc.seedy_);
+    all_lc_seedu.push_back(lc.seedu_);
+    all_lc_seedv.push_back(lc.seedv_);
+    all_lc_eminRH.push_back(lc.eminRH_);
+    all_lc_areaminRH.push_back(lc.areaminRH_);
     all_lc_seedEta.push_back(lc.seedEta_);
     all_lc_seedPhi.push_back(lc.seedPhi_);
     all_lc_x.push_back(lc.x_);
     all_lc_y.push_back(lc.y_);
     all_lc_z.push_back(lc.z_);
     all_lc_isSi.push_back(lc.isSi_);
+    all_lc_isHD.push_back(lc.isHD_);
     all_lc_layer.push_back(lc.layer_);
-    std::pair<std::map<int,int>::iterator,bool> isInserted =  lMapLC.insert(std::pair<int,int>(lc.layer_,1));
+    std::pair<std::map<int,int>::iterator,bool> isInserted =  lMapLC[lc.type_].insert(std::pair<int,int>(lc.layer_,1));
     if (!isInserted.second) isInserted.first->second += 1;
     
     all_lc_nrechits.push_back(lc.nrechits_);
+    all_lc_nrechitsHD.push_back(lc.nrechitsHD_);
+    all_lc_efracHD.push_back(lc.efracHD_);
   }
   
-  for (unsigned iL(0); iL<nLayers;++iL){
-    std::map<int,int>::iterator lEle = lMapLC.find(iL+1);
-    if (lEle !=lMapLC.end()) all_lc_mult.push_back(lEle->second);
-    else all_lc_mult.push_back(0);
+  for (unsigned iTy(0); iTy<2;++iTy){
+    for (unsigned iL(0); iL<nLayers;++iL){
+      std::map<int,int>::iterator lEle = lMapLC[iTy].find(iL+1);
+      if (lEle !=lMapLC[iTy].end()) all_lc_mult.push_back(lEle->second);
+      else all_lc_mult.push_back(0);
+    }
   }
   
   treeAllLC->Fill();
@@ -875,6 +1010,9 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
   for (unsigned iT(0); iT<nIters; ++iT){
     if (debug) std::cout << " -- Processing iter " << iterTypeVec[iT] << std::endl;
+
+    const reco::CaloClusterCollection& lcs = (iterTypeVec[iT].find("NEWLC")==iterTypeVec[iT].npos) ? lcsold : lcsnew;
+    edm::Handle<reco::CaloClusterCollection> layerClusterHandle = (iterTypeVec[iT].find("NEWLC")==iterTypeVec[iT].npos) ? layerClusterOLDHandle : layerClusterNEWHandle;
 
     //fill this here - duplicated across tracksters trees...
     lighttreeVec[iT].initialiseTreeVariables((size_t)irun,(int)ievent,(size_t)ilumiblock); 
@@ -939,6 +1077,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 //@@    if (iterTypeVec[iT]=="Sim") lighttreeVec[iT].fillTSinfo(ievent,iterTypeVec[iT],tracksters,nLayers,lcsFromTrksters,layerClusterHandle,recSimColl,newSimLCmult);
 //@@    else {
     std::vector<std::vector<double> > dummy;
+
     lighttreeVec[iT].fillTSinfo(ievent,iterTypeVec[iT],tracksters,nLayers,lcsFromTrksters,layerClusterHandle,recSimColl,dummy);
 //@@    }
     //if (itrksterMin_>=0 && fillTripletsInfo) fillDoubletsInfo(tracksters[itrksterMin_],lcs,lighttreeVec[iT]);

@@ -73,10 +73,20 @@ struct simcluster {
 };
 
 struct layercluster {
+  int type_;
   double energy_;
   double eta_;
   double phi_;
   double seedEnergy_;
+  double seedArea_;
+  double seedx_;
+  double seedy_;
+  double seedu_;
+  double seedv_;
+  double eminRH_;
+  double areaminRH_;
+  int nrechitsHD_;
+  double efracHD_;
   double seedEta_;
   double seedPhi_;
   int algo_;
@@ -85,6 +95,7 @@ struct layercluster {
   double z_;
   int nrechits_;
   bool isSi_;
+  int isHD_;
   int layer_;
   int idx2Trackster_;
   double tsMult_;

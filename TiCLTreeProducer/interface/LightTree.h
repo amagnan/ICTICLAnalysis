@@ -157,9 +157,12 @@ class LightTree {
   std::vector<double> lc_seedPhi;
   std::vector<double> lc_x;
   std::vector<double> lc_y;
+  std::vector<double> lc_seedu;
+  std::vector<double> lc_seedv;
   std::vector<double> lc_z;
   std::vector<int> lc_algo;
   std::vector<int> lc_isSi;
+  std::vector<int> lc_isHD;
   std::vector<int> lc_layer;
   std::vector<int> lc_nrechits;
   std::vector<double> lc_tsMult;
