@@ -144,6 +144,7 @@ private:
 			 const std::map<DetId, const HGCRecHit*>& hitMap);
 
   void initialiseLCTreeVariables();
+  void initialiseRHTreeVariables(const unsigned nL);
 
   void fillDoubletsInfo(const ticl::Trackster & thisTrackster,
 			const reco::CaloClusterCollection &  layerClusters,
@@ -179,7 +180,7 @@ private:
 
   unsigned debug;
 
-  const unsigned nL = 28;
+  const unsigned nLEE = 28;
 
   unsigned nIters;
 
@@ -192,7 +193,7 @@ private:
 
   int fillTripletsInfo;
 
-  TTree *treeAllLC;
+  TTree *treeAllLC = 0;
 
   int nAllLC;
   std::vector<int> all_lc_type;
@@ -220,6 +221,15 @@ private:
   std::vector<double> all_lc_efracHD;
   std::vector<int> all_lc_mult;
 
+  TTree *treeAllRH = 0;
+  int rh_evt;
+  std::vector<int> rh_layer;
+  std::vector<int> rh_n;
+  std::vector<int> rh_nHD;
+  std::vector<double> rh_E;
+  std::vector<double> rh_EHD;
+  
+  
 };
 
 
@@ -294,6 +304,15 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
   treeAllLC->Branch("all_lc_x", &all_lc_x);
   treeAllLC->Branch("all_lc_y", &all_lc_y);
   treeAllLC->Branch("all_lc_z", &all_lc_z);
+
+  treeAllRH = file->make<TTree>("treeRH", "treeAllRH");
+
+  treeAllRH->Branch("rh_evt", &rh_evt, "rh_evt/I");
+  treeAllRH->Branch("rh_layer", &rh_layer);
+  treeAllRH->Branch("rh_n", &rh_n);
+  treeAllRH->Branch("rh_nHD", &rh_nHD);
+  treeAllRH->Branch("rh_E", &rh_E);
+  treeAllRH->Branch("rh_EHD", &rh_EHD);
  
 }
 
@@ -522,6 +541,17 @@ void TiCLTreeProducer::initialiseLCTreeVariables(){
 
 };
 
+void TiCLTreeProducer::initialiseRHTreeVariables(const unsigned nL){
+  rh_n.clear();
+  rh_nHD.clear();
+  rh_E.clear();
+  rh_EHD.clear();
+  rh_n.resize(nL,0);
+  rh_nHD.resize(nL,0);
+  rh_E.resize(nL,0);
+  rh_EHD.resize(nL,0);
+};
+
 void TiCLTreeProducer::fillDoubletsInfo(const ticl::Trackster & thisTrackster,
 			   const reco::CaloClusterCollection &  layerClusters,
 			   LightTree & myTree
@@ -530,7 +560,7 @@ void TiCLTreeProducer::fillDoubletsInfo(const ticl::Trackster & thisTrackster,
   std::vector< std::vector<Triplet> > tripletVec;
   std::vector<Triplet> dummy;
   dummy.reserve(10);
-  tripletVec.resize(nL,dummy);
+  tripletVec.resize(nLEE,dummy);
   //loop on doublets: consider it is the outerDoublet.
   for (const auto &edge : thisTrackster.edges()) {//loop on edges
     auto & ic = layerClusters[edge[0]];//B
@@ -622,7 +652,7 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   const CaloGeometry* geom = &iSetup.getData(tok_geom_);
   recHitTools->setGeometry(*geom);
 
-  unsigned nLayers = recHitTools->lastLayerBH();
+  const unsigned nLayers = recHitTools->lastLayerBH();
 
   edm::Handle<HGCRecHitCollection> recHitHandleEE;
   iEvent.getByToken(hgcalRecHitsEEToken_, recHitHandleEE);
@@ -692,8 +722,15 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   if (debug) std::cout << " - Processing event " << iEvent.id().event() << std::endl;
 
   initialiseLCTreeVariables();
+  initialiseRHTreeVariables(nLayers);
 
-//@@  std::vector<std::vector<double> > newSimLCmult;
+  rh_evt = iEvent.id().event();
+  rh_layer.resize(nLayers,0);
+  for (unsigned iL(0);iL<nLayers;++iL){
+    rh_layer[iL] = iL;
+  }
+
+  //@@  std::vector<std::vector<double> > newSimLCmult;
 
   // get photon truth info for conversions
   auto mcTruthPhotons = photonMCTruthFinder_.find(*simTracks, *simVertices);
@@ -890,6 +927,27 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
   if (debug) std::cout << "number of selected caloparticles: " <<     caloparticles.size() << std::endl;
   if (caloparticles.size()==0) return;
+
+
+  auto itcheck = hitMap.begin();
+  for (;itcheck != hitMap.end();++itcheck) {
+    const HGCRecHit* hit = itcheck->second;
+    const DetId & id = itcheck->first;
+    const unsigned layer = recHitTools->getLayerWithOffset(id);
+    //reject noise hits
+    if (hit->signalOverSigmaNoise()<3) continue;
+    bool isHD = recHitTools->isSilicon(id)?HGCSiliconDetId(id).highDensity():false;
+    rh_n[layer-1] += 1;
+    rh_E[layer-1] += hit->energy();
+    if (isHD){
+      rh_nHD[layer-1] += 1;
+      rh_EHD[layer-1] += hit->energy();	
+    }
+  }
+
+  treeAllRH->Fill();
+
+
   
   // get the relevant trackster collection
   // LG: For now always use the MergedTrackster
