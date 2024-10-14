@@ -82,6 +82,8 @@
 #include "TVector3.h"
 #include "TLorentzVector.h"
 
+#include "TH2F.h"
+
 
 bool sortLCsByEnergyAndLayer(const layercluster& a, const layercluster& b) {
   return (a.energy_ > b.energy_) || ((a.energy_ == b.energy_) && (a.layer_ < b.layer_));
@@ -224,11 +226,17 @@ private:
   TTree *treeAllRH = 0;
   int rh_evt;
   std::vector<int> rh_layer;
-  std::vector<int> rh_n;
-  std::vector<int> rh_nHD;
-  std::vector<double> rh_E;
-  std::vector<double> rh_EHD;
-  
+  unsigned SNthresh[3] = {0,3,5};
+  std::vector<int> rh_n[3];
+  std::vector<int> rh_nHD[3];
+  std::vector<int> rh_nScint[3];
+  std::vector<double> rh_E[3];
+  std::vector<double> rh_EHD[3];
+  std::vector<double> rh_EScint[3];
+
+  TH2F *h_rh_SoN_Scint = 0;
+  TH2F *h_rh_SoN_LD = 0;
+  TH2F *h_rh_SoN_HD = 0;
   
 };
 
@@ -309,11 +317,22 @@ TiCLTreeProducer::TiCLTreeProducer(const edm::ParameterSet& iConfig):
 
   treeAllRH->Branch("rh_evt", &rh_evt, "rh_evt/I");
   treeAllRH->Branch("rh_layer", &rh_layer);
-  treeAllRH->Branch("rh_n", &rh_n);
-  treeAllRH->Branch("rh_nHD", &rh_nHD);
-  treeAllRH->Branch("rh_E", &rh_E);
-  treeAllRH->Branch("rh_EHD", &rh_EHD);
- 
+
+  for (unsigned i(0); i<3;++i){
+    std::ostringstream lname;
+    lname << "_SoN" << SNthresh[i];
+    treeAllRH->Branch(("rh_n"+lname.str()).c_str(), &rh_n[i]);
+    treeAllRH->Branch(("rh_nHD"+lname.str()).c_str(), &rh_nHD[i]);
+    treeAllRH->Branch(("rh_nScint"+lname.str()).c_str(), &rh_nScint[i]);
+    treeAllRH->Branch(("rh_E"+lname.str()).c_str(), &rh_E[i]);
+    treeAllRH->Branch(("rh_EHD"+lname.str()).c_str(), &rh_EHD[i]);
+    treeAllRH->Branch(("rh_EScint"+lname.str()).c_str(), &rh_EScint[i]);
+  }
+
+  h_rh_SoN_Scint = file->make<TH2F>("h_rh_SoN_Scint", ";layer;SoN;Scint rechits;", 20,30,50,256,0,32);
+  h_rh_SoN_LD = file->make<TH2F>("h_rh_SoN_LD", ";layer;SoN;LD rechits;", 50,0,50,256,0,32);
+  h_rh_SoN_HD = file->make<TH2F>("h_rh_SoN_HD", ";layer;SoN;HD rechits;", 35,0,35,256,0,32);
+  
 }
 
 TiCLTreeProducer::~TiCLTreeProducer() {}
@@ -473,10 +492,11 @@ void TiCLTreeProducer::fillLCvector(const std::string & iterName,
   layercluster_.efracHD_ = eHD/layercluster_.energy_;
 
   //get seed information
+  bool isSi = recHitTools->isSilicon(aLC.seed());
   auto const itcheck = hitMap.find(aLC.seed());
   if (itcheck != hitMap.end()) {
     const HGCRecHit* hit = itcheck->second;
-    bool isSi = recHitTools->getLayerWithOffset(itcheck->first) < recHitTools->firstLayerBH();
+    //recHitTools->getLayerWithOffset(itcheck->first) < recHitTools->firstLayerBH();
 
     layercluster_.seedEnergy_ = hit->energy();///(double)trkster.vertex_multiplicity(ilc);
     layercluster_.seedArea_ = recHitTools->getCellArea(itcheck->first);
@@ -504,7 +524,7 @@ void TiCLTreeProducer::fillLCvector(const std::string & iterName,
   //std::cout << " -- Arf, " << iterName << " nRH = " << layercluster_.nrechits_ << std::endl;
   //}
 
-  layercluster_.isSi_ = abs(layer_) < recHitTools->firstLayerBH();
+  layercluster_.isSi_ = isSi;
   if (layercluster_.isSi_) layercluster_.isHD_ = HGCSiliconDetId(aLC.seed()).highDensity();
   else layercluster_.isHD_ = -1;
   layercluster_.layer_ = abs(layer_);
@@ -542,14 +562,20 @@ void TiCLTreeProducer::initialiseLCTreeVariables(){
 };
 
 void TiCLTreeProducer::initialiseRHTreeVariables(const unsigned nL){
-  rh_n.clear();
-  rh_nHD.clear();
-  rh_E.clear();
-  rh_EHD.clear();
-  rh_n.resize(nL,0);
-  rh_nHD.resize(nL,0);
-  rh_E.resize(nL,0);
-  rh_EHD.resize(nL,0);
+  for (unsigned i(0); i<3;++i){
+    rh_n[i].clear();
+    rh_nHD[i].clear();
+    rh_nScint[i].clear();
+    rh_E[i].clear();
+    rh_EHD[i].clear();
+    rh_EScint[i].clear();
+    rh_n[i].resize(nL,0);
+    rh_nHD[i].resize(nL,0);
+    rh_nScint[i].resize(nL,0);
+    rh_E[i].resize(nL,0);
+    rh_EHD[i].resize(nL,0);
+    rh_EScint[i].resize(nL,0);
+  }
 };
 
 void TiCLTreeProducer::fillDoubletsInfo(const ticl::Trackster & thisTrackster,
@@ -934,14 +960,24 @@ void TiCLTreeProducer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     const HGCRecHit* hit = itcheck->second;
     const DetId & id = itcheck->first;
     const unsigned layer = recHitTools->getLayerWithOffset(id);
+    bool isSi = recHitTools->isSilicon(id);
+    bool isHD = isSi?HGCSiliconDetId(id).highDensity():false;
+    if (!isSi) h_rh_SoN_Scint->Fill(layer,hit->signalOverSigmaNoise());
+    else if (isHD) h_rh_SoN_HD->Fill(layer,hit->signalOverSigmaNoise());
+    else h_rh_SoN_LD->Fill(layer,hit->signalOverSigmaNoise());
     //reject noise hits
-    if (hit->signalOverSigmaNoise()<3) continue;
-    bool isHD = recHitTools->isSilicon(id)?HGCSiliconDetId(id).highDensity():false;
-    rh_n[layer-1] += 1;
-    rh_E[layer-1] += hit->energy();
-    if (isHD){
-      rh_nHD[layer-1] += 1;
-      rh_EHD[layer-1] += hit->energy();	
+    for (unsigned iSN(0); iSN<3;++iSN){
+      if (hit->signalOverSigmaNoise()<=SNthresh[iSN]) continue;
+      rh_n[iSN][layer-1] += 1;
+      rh_E[iSN][layer-1] += hit->energy();
+      if (isHD){
+	rh_nHD[iSN][layer-1] += 1;
+	rh_EHD[iSN][layer-1] += hit->energy();	
+      }
+      if (!isSi){
+	rh_nScint[iSN][layer-1] += 1;
+	rh_EScint[iSN][layer-1] += hit->energy();	
+      }
     }
   }
 

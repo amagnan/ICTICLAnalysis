@@ -16,21 +16,21 @@ GEOMDIR=D98/
 #GEOMDIR=D49_DefSC/
 
 #DataType=ChargedPionsFromVtx #CloseByPhotons #CloseByPhotonsFromVtxWithPU
-#DataType=SinglePions
-DataType=SinglePhotons
+DataType=SinglePions
+#DataType=SinglePhotons
 #ElectronsFromVtx #CloseByPhotonsFromVtx #CloseByPhotonsWithPU #CloseByPhotonsFromVtxWithPU
 
 #for PT in 40to400
 #for PT in 5 10 25 50 100;
-#for PT in 10 50 100;
-for PT in 40;
+#for PT in 50 10 100;
+for PT in 100;
 #for PT in 3 10 20 50 100 150 200;
 #for PT in 40 50 75 100 150 200;
 do
 #    for eta in 2; #17 19 23 25 27;
 #    do
 
-    PTETA=_pt${PT}_randEta
+    PTETA=_En${PT}_randEta_z415
 
     for d in $DataType 
     do
